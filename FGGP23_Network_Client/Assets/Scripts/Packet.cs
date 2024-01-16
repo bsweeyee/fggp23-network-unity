@@ -70,6 +70,20 @@ public class Packet
         return value;
     }
 
+    public float GetFloat() {
+        float value = BitConverter.ToSingle(data, readPosition);
+        readPosition += 4;
+        return value;
+    }
+
+    public Vector3 GetVector3() {
+        return new Vector3(GetFloat(), GetFloat(), GetFloat());
+    }
+
+    public Quaternion GetQuaternion() {
+        return new Quaternion(GetFloat(), GetFloat(), GetFloat(), GetFloat());
+    }
+
     public void Add(byte data) {
         writeableData.Add(data);
     }
@@ -78,5 +92,10 @@ public class Packet
     }
     public void Add(int data) {
         writeableData.AddRange(BitConverter.GetBytes(data));
+    }
+
+    public void Add(string data) {
+        Add(data.Length);
+        writeableData.AddRange(Encoding.ASCII.GetBytes(data));
     }        
 }

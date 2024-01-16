@@ -2450,6 +2450,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0dafb3b190d39e746b78c3ecff157a96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  PlayerPrefab: {fileID: 4235416924153237304, guid: d179013df9ef6e54ba36da59019021e8, type: 3}
 --- !u!4 &159541425
 Transform:
   m_ObjectHideFlags: 0
@@ -28066,8 +28067,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b0adab141f9d3f4d9401a54db1f4735, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerName: Player1
   ip: 127.0.0.1
   port: 25565
+  Id: 0
 --- !u!4 &2062760656
 Transform:
   m_ObjectHideFlags: 0

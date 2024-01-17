@@ -7,6 +7,7 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public GameObject PlayerPrefab;
+    public GameObject LocalPlayerPrefab; 
 
     public Dictionary<byte, PacketHandle> Handlers = new();
     public delegate void PacketHandle(Packet packet);
@@ -18,6 +19,8 @@ public class GameManager : MonoBehaviour
     public List<Action> actionsCopy = new();
 
     bool hasAction = false;
+
+    Camera temporaryCamera;
 
     void Awake() {
         if (Instance == null) {
@@ -31,6 +34,10 @@ public class GameManager : MonoBehaviour
         Handlers.Add((byte)PacketID.S_welcome, WelcomeReceived);
         Handlers.Add((byte)PacketID.S_spawnPlayer, SpawnPlayer);
         Handlers.Add((byte)PacketID.S_playerDisconnected, PlayerDisconnected);
+        Handlers.Add((byte)PacketID.S_playerPosition, PlayerPosition);
+        Handlers.Add((byte)PacketID.S_playerRotation, PlayerRotation);
+
+        temporaryCamera = FindObjectOfType<Camera>();
     }
 
     public void Update() {
@@ -44,8 +51,7 @@ public class GameManager : MonoBehaviour
             foreach(Action action in actionsCopy) {
                 action.Invoke();                
             }
-            if (actions.Count > 0) {
-                Debug.Log("here");
+            if (actions.Count > 0) {                
                 hasAction = true;
             }
         }
@@ -60,7 +66,9 @@ public class GameManager : MonoBehaviour
         welcomeReceived.Add((byte)PacketID.C_welcomeReceived);
         welcomeReceived.Add(yourID);
         Client.Instance.tcp.SendData(welcomeReceived);
-        Client.Instance.Id = yourID;            
+        Client.Instance.Id = yourID;
+
+        Client.Instance.udp.Connect();            
     }
 
     public void SpawnPlayer(Packet packet) {
@@ -69,12 +77,15 @@ public class GameManager : MonoBehaviour
         Vector3 pos = packet.GetVector3();
         Quaternion rot = packet.GetQuaternion();
 
+        GameObject prefabToSpawn = (id == Client.Instance.Id) ? LocalPlayerPrefab : PlayerPrefab;
+
         lock(actions) {
             hasAction = true;
             actions.Add(() => {
-                Player newPlayer = Instantiate(PlayerPrefab, pos, rot).GetComponent<Player>();
+                Debug.Log(name + ": " + pos);
+                Player newPlayer = Instantiate(prefabToSpawn, pos, rot).GetComponent<Player>();
                 newPlayer.playerName = name;
-                Debug.Log("added: " + id);
+                // Debug.Log("added: " + id);
                 if (PlayerList.ContainsKey(id)) {
                     PlayerList[id] = newPlayer;
                 } else {
@@ -91,10 +102,42 @@ public class GameManager : MonoBehaviour
                 hasAction = true;
                 actions.Add(() => {
                     actions.Add(() => {                        
-                        Debug.Log("remove: " + id);                                                
+                        // Debug.Log("remove: " + id);                                                
                         PlayerList.Remove(id);
                         Destroy(player.gameObject);
                     });
+                });
+            }
+        }
+    }
+
+    public void PlayerPosition(Packet packet) {
+        int id = packet.GetInt();
+        Vector3 position = packet.GetVector3();
+        if (PlayerList.TryGetValue(id, out Player player)) {
+            lock(actions) {
+                hasAction = true;
+                actions.Add(() => {                                        
+                    player.targetPosition = position;
+                    // Debug.Log(player.playerName + ": " + position);
+                });
+            }
+        }
+    }
+
+    public void PlayerRotation(Packet packet) {
+        int id = packet.GetInt();
+        if (id == Client.Instance.Id) {
+            return;
+        }
+
+        Quaternion rotation = packet.GetQuaternion();
+
+        if (PlayerList.TryGetValue(id, out Player player)) {
+            lock(actions) {
+                hasAction = true;
+                actions.Add(() => {                    
+                    player.transform.rotation = rotation;
                 });
             }
         }
@@ -103,6 +146,7 @@ public class GameManager : MonoBehaviour
     // #if UNITY_EDITOR
     void OnGUI() {
         if (GUILayout.Button("Connect")) {
+            temporaryCamera?.gameObject.SetActive(false);
             Client.Instance.Connect();
         }
         using (new GUILayout.HorizontalScope()) {
@@ -114,6 +158,7 @@ public class GameManager : MonoBehaviour
         }        
         if (GUILayout.Button("Disconnect")) {
             Client.Instance.Disconnect();
+            temporaryCamera.gameObject.SetActive(true);
         }
     }
     // #endif

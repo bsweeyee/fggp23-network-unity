@@ -44,9 +44,19 @@ public class Packet
         return writeableData.ToArray();
     }
 
+    public byte[] ToUdp(int value) {
+        writeableData.InsertRange(0, BitConverter.GetBytes(writeableData.Count));
+        writeableData.InsertRange(0, BitConverter.GetBytes(value));
+        return writeableData.ToArray();
+    }
+
+    public void InsertInt(int value) {
+        writeableData.InsertRange(0, BitConverter.GetBytes(value));
+    }
+
     public byte GetByte() {
         byte value = data[readPosition];
-        readPosition += 4;
+        readPosition ++;
         return value;
     }
 
@@ -97,5 +107,25 @@ public class Packet
     public void Add(string data) {
         Add(data.Length);
         writeableData.AddRange(Encoding.ASCII.GetBytes(data));
+    }
+
+    public void Add(float data) {
+        writeableData.AddRange(BitConverter.GetBytes(data));
+    }
+
+    public void Add(bool data) {
+        writeableData.AddRange(BitConverter.GetBytes(data));
+    }
+
+    public void Add(Vector3 data) {
+        Add(data.x);
+        Add(data.y);
+        Add(data.z);
+    }
+    public void Add(Quaternion data) {
+        Add(data.x);        
+        Add(data.y);        
+        Add(data.z);        
+        Add(data.w);        
     }        
 }

@@ -84,12 +84,12 @@ namespace FGNetworkProgramming
                     if (input == EGameInput.LEFT_MOUSE_BUTTON || input == EGameInput.RIGHT_MOUSE_BUTTON)
                     {
                         OnHandleMouseInput?.Invoke(mouse.position.value, input, EInputState.PRESSED);
-                        Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.PRESSED);
+                        // Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.PRESSED);
                     }
                     else
                     {
                         OnHandleKeyboardInput?.Invoke(input, EInputState.PRESSED);
-                        Debug.Log("[" + input + "]:" + EInputState.PRESSED);
+                        // Debug.Log("[" + input + "]:" + EInputState.PRESSED);
                     }
                     gameInputs[input] = new TInputState(input, EInputState.PRESSED);
                 } 
@@ -113,12 +113,12 @@ namespace FGNetworkProgramming
                     if (input == EGameInput.LEFT_MOUSE_BUTTON || input == EGameInput.RIGHT_MOUSE_BUTTON)
                     {
                         OnHandleMouseInput?.Invoke(mouse.position.value, input, EInputState.RELEASE);
-                        Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.RELEASE);
+                        // Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.RELEASE);
                     }
                     else
                     {
                         OnHandleKeyboardInput?.Invoke(input, EInputState.RELEASE);
-                        Debug.Log("[" + input + "]:" + EInputState.RELEASE);
+                        // Debug.Log("[" + input + "]:" + EInputState.RELEASE);
                     }
                     gameInputs[input] = new TInputState(input, EInputState.NONE);
                 }

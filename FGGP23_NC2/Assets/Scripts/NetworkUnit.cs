@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 using Unity.VisualScripting;
 using UnityEngine;
 
+[RequireComponent(typeof(NetworkObject), typeof(NetworkTransform))]
 public class NetworkUnit : NetworkBehaviour
 {
     NetworkVariable<Vector3> moveInput = new NetworkVariable<Vector3>(writePerm: NetworkVariableWritePermission.Server);    
@@ -15,11 +17,11 @@ public class NetworkUnit : NetworkBehaviour
         renderer = GetComponentInChildren<MeshRenderer>();
         if (OwnerClientId == NetworkManager.Singleton.LocalClientId)
         {
-            renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameMaterials[0] } );
+            renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[0] } );
         }
         else
         {
-            renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameMaterials[1] } );
+            renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[1] } );
         }
     }
 

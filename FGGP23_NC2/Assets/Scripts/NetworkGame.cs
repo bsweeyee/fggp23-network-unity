@@ -4,11 +4,14 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.Collections;
 using FGNetworkProgramming;
+using Unity.VisualScripting;
 
+/// <summary>
+/// Network Game tracks GameStates and manages spawned network objects
+/// </summary>
 public class NetworkGame : NetworkBehaviour
 {
-    public List<NetworkObject> networkObjects= new List<NetworkObject>();
-
+    List<NetworkUnit> networkUnitInstances = new List<NetworkUnit>();    
     void Start()
     {
         // TODO: register input events
@@ -26,7 +29,7 @@ public class NetworkGame : NetworkBehaviour
                         if (isHit)
                         {
                             Debug.Log("hit point: " + hit.point);
-                            SpawnRPC(0, hit.point);
+                            SpawnUnitRPC(hit.point);
                         }
                     }
                     break;
@@ -34,19 +37,12 @@ public class NetworkGame : NetworkBehaviour
             });
         }        
     }        
-
+    
     [Rpc(SendTo.Server)]
-    private void SpawnRPC(int idx, Vector3 position)
+    public void SpawnUnitRPC(Vector3 position)
     {
-        NetworkObject ob = Instantiate(networkObjects[idx], position, Quaternion.identity);
-        ob.SpawnWithOwnership(NetworkManager.Singleton.LocalClientId);        
-
-        // Alternative spawn method
-        // NetworkManager.Instantiate(bullet);        
-    }
-
-    void OnGUI()
-    {
-
+        NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit, position, Quaternion.identity);
+        ob.GetComponent<NetworkObject>().SpawnWithOwnership(NetworkManager.Singleton.LocalClientId);
+        networkUnitInstances.Add(ob); // TODO: remember to remove this from list when a networkUnit is destroyed                 
     }    
 }

@@ -4,22 +4,24 @@ using UnityEngine;
 using Unity.Netcode;
 
 namespace FGNetworkProgramming
-{
-
+{    
     public class LocalGame : MonoBehaviour
     {
-        [SerializeField] private NetworkManager networkManager;
+        [SerializeField] private GameData gameData;                
 
-        [SerializeField] private List<Material> gameMaterials = new List<Material>();
-        
-        private Camera mainCamera;
+        private NetworkManager networkManagerInstance;
+        private Camera mainCameraInstance;
+        private GameView gameViewInstance;
+        private static LocalGame instance;
 
+        public GameData GameData {
+            get { return gameData; }
+        }
         public Camera MainCamera
         {
-            get { return mainCamera; }
+            get { return mainCameraInstance; }
         }    
 
-        private static LocalGame instance;
         public static LocalGame Instance 
         {
             get {
@@ -32,14 +34,16 @@ namespace FGNetworkProgramming
                 }
                 return instance;
             }
-        }    
+        }            
         
-        public List<Material> GameMaterials { get { return gameMaterials; } }
         void Awake()
         {            
             Input.Instance.Initialize();            
-            Instantiate(networkManager);
-            mainCamera = FindObjectOfType<Camera>(); // TODO: we might want to instantiate it later
+            networkManagerInstance =  Instantiate(gameData.NetworkManager);
+            gameViewInstance = Instantiate(gameData.GameView);
+            mainCameraInstance = FindObjectOfType<Camera>(); // TODO: we might want to instantiate it later
+
+            gameViewInstance.Initialize(this);
         }
 
         void OnGUI()
@@ -75,6 +79,6 @@ namespace FGNetworkProgramming
                 }
                 GUILayout.TextArea(clientStrings);
             }
-        }
+        }         
     }
 }

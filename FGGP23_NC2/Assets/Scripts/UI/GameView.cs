@@ -5,23 +5,35 @@ using UnityEngine.UI;
 using TMPro;
 using FGNetworkProgramming;
 using Unity.Netcode;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
-public class GameView : MonoBehaviour
+public class GameView : MonoBehaviour, INetworkInitialize
 {       
+    [SerializeField] private Button spawnUnit;
+
     private Canvas canvas;
-    private Button spawnUnit;
+    private EventSystem eventSystem;
     public void Initialize(LocalGame localGame)
     {
         canvas = GetComponent<Canvas>();
-        canvas.worldCamera = localGame.MainCamera;        
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        canvas.worldCamera = localGame.MainCamera;
+
+        var es = new GameObject("EventSystem");
+        
+        eventSystem = es.AddComponent<EventSystem>();
+        es.AddComponent<InputSystemUIInputModule>();
+
+        gameObject.SetActive(false);        
     }
 
-    public void NetworkInitialize(NetworkGame networkGame)
+    public void OnNetworkInitialize(NetworkGame networkGame)
     {
+        gameObject.SetActive(true);
         spawnUnit.onClick.AddListener(() => {
             // TODO: Figure out a way to abstract the need to reference networkGame from View
-            int id = (int) NetworkManager.Singleton.LocalClientId; // TODO: Local Client Id will likely change when a player leaves and a new player joins. Check and change implementation if that's the case
-            networkGame.SpawnUnitRPC(LocalGame.Instance.GameData.UnitSpawnPosition[id]);                        
+            networkGame.SpawnUnitRPC(NetworkManager.Singleton.LocalClientId);
         });
     }    
 }

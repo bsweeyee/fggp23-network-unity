@@ -17,6 +17,7 @@ MonoBehaviour:
   gameMaterials:
   - {fileID: 2100000, guid: d5407c2272b38a94093345610d8a5c37, type: 2}
   - {fileID: 2100000, guid: 5f9dfa9f939084840bce5cdd96e0a0cc, type: 2}
+  gameView: {fileID: 346374073063469233, guid: ff3c09ef6f9c08d41b3c8945162d0b94, type: 3}
   unitSpawnPosition:
   - {x: 0, y: 0, z: 0}
   - {x: 0, y: 0, z: 0}

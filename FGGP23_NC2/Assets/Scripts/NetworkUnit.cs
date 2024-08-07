@@ -15,7 +15,7 @@ public class NetworkUnit : NetworkBehaviour
     private void OnEnable()
     {
         renderer = GetComponentInChildren<MeshRenderer>();
-        if (OwnerClientId == NetworkManager.Singleton.LocalClientId)
+        if (OwnerClientId == NetworkManager.Singleton.LocalClientId) // TODO: check which client this network unit belongs to
         {
             renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[0] } );
         }

@@ -29,7 +29,8 @@ namespace FGNetworkProgramming
                     }
                 }
             }
-        }
+        }        
+        
         protected virtual void OnSceneGUI()        
         {
             LocalGame lg = (LocalGame)target;
@@ -49,7 +50,7 @@ namespace FGNetworkProgramming
                         Repaint();
                     }                    
                 }
-            }
+            }            
         }
     }
     #endif

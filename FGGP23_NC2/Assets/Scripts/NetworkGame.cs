@@ -4,7 +4,12 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.Collections;
 using FGNetworkProgramming;
-using Unity.VisualScripting;
+using System.Linq;
+
+public interface INetworkInitialize
+{
+    void OnNetworkInitialize(NetworkGame game);
+}
 
 /// <summary>
 /// Network Game tracks GameStates and manages spawned network objects
@@ -27,9 +32,7 @@ public class NetworkGame : NetworkBehaviour
                         RaycastHit hit;                    
                         bool isHit = Physics.Raycast(ray, out hit);
                         if (isHit)
-                        {
-                            Debug.Log("hit point: " + hit.point);
-                            SpawnUnitRPC(hit.point);
+                        {                            
                         }
                     }
                     break;
@@ -38,11 +41,34 @@ public class NetworkGame : NetworkBehaviour
         }        
     }        
     
-    [Rpc(SendTo.Server)]
-    public void SpawnUnitRPC(Vector3 position)
+    public override void OnNetworkSpawn()
     {
+        if (IsLocalPlayer)
+        {            
+            // we call all interfaces that should only run when network is spawned
+            var networkInitializers = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkInitialize>();
+            foreach(var ni in networkInitializers)
+            {
+                ni.OnNetworkInitialize(this);
+            }
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    public void SpawnUnitRPC(ulong id)
+    {        
+        Vector3 position = Vector3.zero;        
+        if (NetworkManager.Singleton.LocalClientId == id)
+        {
+            position = LocalGame.Instance.GameData.UnitSpawnPosition[0];
+        }
+        else
+        {
+            position = LocalGame.Instance.GameData.UnitSpawnPosition[1];
+        }
+
         NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit, position, Quaternion.identity);
-        ob.GetComponent<NetworkObject>().SpawnWithOwnership(NetworkManager.Singleton.LocalClientId);
+        ob.GetComponent<NetworkObject>().Spawn();
         networkUnitInstances.Add(ob); // TODO: remember to remove this from list when a networkUnit is destroyed                 
     }    
 }

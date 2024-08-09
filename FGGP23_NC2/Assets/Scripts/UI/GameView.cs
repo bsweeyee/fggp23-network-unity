@@ -8,7 +8,7 @@ using Unity.Netcode;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 
-public class GameView : MonoBehaviour, INetworkInitialize
+public class GameView : MonoBehaviour, INetworkGameSpawned
 {       
     [SerializeField] private Button spawnUnit;
 
@@ -18,7 +18,7 @@ public class GameView : MonoBehaviour, INetworkInitialize
     {
         canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = localGame.MainCamera;
+        canvas.worldCamera = localGame.MainCamera.GameCamera;
 
         var es = new GameObject("EventSystem");
         
@@ -28,12 +28,12 @@ public class GameView : MonoBehaviour, INetworkInitialize
         gameObject.SetActive(false);        
     }
 
-    public void OnNetworkInitialize(NetworkGame networkGame)
+    public void OnNetworkGameSpawned(NetworkGame networkGame, ulong clientID)
     {
         gameObject.SetActive(true);
         spawnUnit.onClick.AddListener(() => {
             // TODO: Figure out a way to abstract the need to reference networkGame from View
-            networkGame.SpawnUnitRPC(NetworkManager.Singleton.LocalClientId);
+            networkGame.SpawnUnitRpc(NetworkManager.Singleton.LocalClientId);
         });
     }    
 }

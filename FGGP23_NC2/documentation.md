@@ -38,11 +38,11 @@ Objective:
     - Tap word popup and sync message
 
 # TODO
-[ ] Display Debug Logs on game builds ( to check for error in network ids etc.)
-[ ] Spawn Network Objects in their correct respective positions
+[o] Display Debug Logs on game builds ( to check for error in network ids etc.)
+[o] Spawn Network Objects in their correct respective positions
     - OwnerClientId is probably always the same ( Belongs to Server in a Server authoritative system ). To get the id of the Client who RPC-ed, we need to send that information in the RPC itself
 [ ] Setup LocalGame States
-[ ] Setup NetworkUnit States
+[o] Setup NetworkUnit States
 
 # Documentation
 
@@ -52,3 +52,15 @@ Objective:
 
 ## 07/08/2024
 https://stackoverflow.com/questions/67704820/how-do-i-print-unitys-debug-log-to-the-screen-gui
+
+## 08/08/2024
+0: 4.5,4,-5.5
+1: -4.5,4,5.5
+
+0: 30.00001, 320, -9.85853e-07
+1: 30,140,0
+
+## 09/08/2024
+TODO:
+- Test attacking and death state of Network Unit
+- Handle Game State

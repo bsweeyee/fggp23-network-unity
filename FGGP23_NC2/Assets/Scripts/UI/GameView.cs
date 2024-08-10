@@ -8,32 +8,41 @@ using Unity.Netcode;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 
-public class GameView : MonoBehaviour, INetworkGameSpawned
+public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting
 {       
     [SerializeField] private Button spawnUnit;
 
     private Canvas canvas;
     private EventSystem eventSystem;
-    public void Initialize(LocalGame localGame)
+    public void Initialize(LocalGame localGame, Camera worldCamera)
     {
         canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = localGame.MainCamera.GameCamera;
+        canvas.worldCamera = worldCamera;
 
         var es = new GameObject("EventSystem");
         
         eventSystem = es.AddComponent<EventSystem>();
-        es.AddComponent<InputSystemUIInputModule>();
-
-        gameObject.SetActive(false);        
+        es.AddComponent<InputSystemUIInputModule>();                
     }
 
-    public void OnNetworkGameSpawned(NetworkGame networkGame, ulong clientID)
+    public void OnGameStatePlay(NetworkGame networkGame, int clientID)
     {
         gameObject.SetActive(true);
+        spawnUnit.onClick.RemoveAllListeners();
         spawnUnit.onClick.AddListener(() => {
             // TODO: Figure out a way to abstract the need to reference networkGame from View
-            networkGame.SpawnUnitRpc(NetworkManager.Singleton.LocalClientId);
+            networkGame.SpawnUnitRpc(LocalGame.Instance.ConnectionIndex);
         });
-    }    
+    }
+
+    public void OnGameStateStart(LocalGame game)
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
+    {
+        gameObject.SetActive(false);
+    }
 }

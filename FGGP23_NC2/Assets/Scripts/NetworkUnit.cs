@@ -23,7 +23,7 @@ public class NetworkUnit : NetworkBehaviour
 {
     #region UNIT DATA    
     private int unitID;
-    private ulong ownerID;
+    private int ownerConnectionIndex;
     #endregion
 
     #region SERVER_AND_CLIENT-READ, SERVER-WRITE NETWORK VARIABLES    
@@ -39,12 +39,12 @@ public class NetworkUnit : NetworkBehaviour
     {
         get { return unitID; }
     }
-    public ulong OwnerID
+    public int OwnerConnectionID
     {
-        get { return ownerID; }
+        get { return ownerConnectionIndex; }
     }
 
-    ulong targetAttackOwnerID = 99;    
+    int targetAttackOwnerID = 99;    
 
     private void OnEnable()
     {
@@ -67,7 +67,7 @@ public class NetworkUnit : NetworkBehaviour
         switch(CurrentState.Value)
         {
             case ENetworkUnitState.MOVE:
-            if (NetworkManager.Singleton.LocalClientId == ownerID) 
+            if (LocalGame.Instance.ConnectionIndex == ownerConnectionIndex) 
             {                
                 // we skip check if it is not the owner
                 targetAttackOwnerID = SelectAttackOwnerID();
@@ -76,7 +76,7 @@ public class NetworkUnit : NetworkBehaviour
 
             break;
             case ENetworkUnitState.ATTACK:
-            if (NetworkManager.Singleton.LocalClientId == ownerID) 
+            if (LocalGame.Instance.ConnectionIndex == ownerConnectionIndex) 
             {                
                 if (Time.time - LastAttackTime.Value > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
                 {
@@ -128,15 +128,15 @@ public class NetworkUnit : NetworkBehaviour
         }
     }
         
-    private ulong SelectAttackOwnerID()
+    private int SelectAttackOwnerID()
     {
         Collider[] hs = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.UnitAttackableLayer);
-        Collider[] notOwnerHS = hs.Where( x=> x.GetComponent<NetworkUnit>().OwnerID != NetworkManager.Singleton.LocalClientId).ToArray();
+        Collider[] notOwnerHS = hs.Where( x=> x.GetComponent<NetworkUnit>().OwnerConnectionID != LocalGame.Instance.ConnectionIndex).ToArray();
         
         if (notOwnerHS.Length > 0)
         {
             int idx = UnityEngine.Random.Range(0, notOwnerHS.Length);
-            return notOwnerHS[idx].GetComponent<NetworkUnit>().OwnerID;                
+            return notOwnerHS[idx].GetComponent<NetworkUnit>().OwnerConnectionID;                
         }                
         return 99;
     }
@@ -156,7 +156,7 @@ public class NetworkUnit : NetworkBehaviour
 
     #region SERVER RPCS
     [Rpc(SendTo.Server)]
-    public void ExecuteAttackRpc(ulong ownerID)
+    public void ExecuteAttackRpc(int ownerConnectionIndex)
     {
         if (Time.time - LastAttackTime.Value > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
         {
@@ -195,12 +195,12 @@ public class NetworkUnit : NetworkBehaviour
     #region CLIENT_HOST RPCS
     // NOTE: i'm not sure if I should set position in Client and Host. This should be done in Server
     [Rpc(SendTo.ClientsAndHost)]
-    public void InitializeRpc(ulong id, int unitID)
+    public void InitializeRpc(int id, int unitID)
     {       
         this.unitID = unitID; 
-        this.ownerID = id;
+        this.ownerConnectionIndex = id;
         LocalGame.Instance.NetworkUnitInstances.Add(unitID, this);
-        if (NetworkManager.Singleton.LocalClientId == id)
+        if (LocalGame.Instance.ConnectionIndex == id)
         {
             transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[0];
             currentRenderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[0] } );

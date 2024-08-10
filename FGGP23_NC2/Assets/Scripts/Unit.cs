@@ -13,11 +13,11 @@ public class Unit : MonoBehaviour
         get { return data;}
     }
 
-    public void Initialize(UnitData ud, ulong clientID)
+    public void Initialize(UnitData ud, int ownerConnectionIndex)
     {
         data = ud;
         renderer = GetComponentInChildren<MeshRenderer>();
-        if (ud.NetworkOwnerID == clientID) // TODO: check which client this network unit belongs to
+        if (ud.NetworkOwnerID == ownerConnectionIndex) // TODO: check which client this network unit belongs to
         {
             renderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[0] } );
             transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[0];

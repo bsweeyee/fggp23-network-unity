@@ -41,8 +41,17 @@ Objective:
 [o] Display Debug Logs on game builds ( to check for error in network ids etc.)
 [o] Spawn Network Objects in their correct respective positions
     - OwnerClientId is probably always the same ( Belongs to Server in a Server authoritative system ). To get the id of the Client who RPC-ed, we need to send that information in the RPC itself
-[ ] Setup LocalGame States
 [o] Setup NetworkUnit States
+[ ] Setup LocalGame States and handle destruction of objects accordingly
+    - START
+    - WAITING
+    - PLAY
+    - WIN
+    - LOSE
+[ ] When player hits spawn position, reduce player health and set to win / lose state depending on who's health falls below 0
+[ ] Setup cooldown for each spawn
+[ ] Prevent spawning if there is already a friendly unit at the start -> if implement merging, instantly merge
+[ ] Implement units merging
 
 # Documentation
 
@@ -64,3 +73,13 @@ https://stackoverflow.com/questions/67704820/how-do-i-print-unitys-debug-log-to-
 TODO:
 - Test attacking and death state of Network Unit
 - Handle Game State
+
+## 10/08/2024
+I'm not sure if OnNetworkSpawn goes first or OnClientConnected goes first
+Based on local testing, OnNetworkSpawn triggers first, then OnClientConnected.
+Why this is important is because I used the default spawned player object to handle things like adding NetworkGame(a player) to the master list.
+
+TODO:
+- Finish Game State handling
+- Fix bug with player attacking
+- Handle game end loop

@@ -12,8 +12,10 @@ namespace FGNetworkProgramming
     public class LocalGame_Editor : Editor
     {
         private bool bIsDisplaySpawnPosition;
+        private bool bDisplayNonNetworkCameraPosition;
         private bool bIsDisplayCameraPosition;
         private bool bIsDisplayCameraRotation;
+        private bool bDisplayNonNetworkCameraRotation;
 
         public override void OnInspectorGUI()
         {
@@ -58,6 +60,44 @@ namespace FGNetworkProgramming
                 }
             }
 
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bDisplayNonNetworkCameraPosition = EditorGUILayout.Toggle(bDisplayNonNetworkCameraPosition, GUILayout.Width(15));                
+                EditorGUILayout.LabelField("Non-network Camera Position", EditorStyles.miniBoldLabel);
+            }
+
+            if (bDisplayNonNetworkCameraPosition)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    var newPos = EditorGUILayout.Vector3Field("", lg.GameData.CameraNonNetworkSpawnPosition);
+                    if (newPos != lg.GameData.CameraNonNetworkSpawnPosition)
+                    {
+                        lg.GameData.CameraNonNetworkSpawnPosition = newPos;
+                        SerializeGameData(lg.GameData);
+                    }
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bDisplayNonNetworkCameraRotation = EditorGUILayout.Toggle(bDisplayNonNetworkCameraRotation, GUILayout.Width(15));                
+                EditorGUILayout.LabelField("Non-network Camera Rotation", EditorStyles.miniBoldLabel);
+            }
+
+            if (bDisplayNonNetworkCameraRotation)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    var newEuler = EditorGUILayout.Vector3Field("", lg.GameData.CameraNonNetworkRotation.eulerAngles);
+                    if (newEuler != lg.GameData.CameraNonNetworkRotation.eulerAngles)
+                    {
+                        lg.GameData.CameraNonNetworkRotation = Quaternion.Euler(newEuler);
+                        SerializeGameData(lg.GameData);
+                    }
+                }
+            }
+            
             using (new EditorGUILayout.HorizontalScope())
             {
                 bIsDisplayCameraPosition = EditorGUILayout.Toggle(bIsDisplayCameraPosition, GUILayout.Width(15));                
@@ -200,6 +240,12 @@ namespace FGNetworkProgramming
                 var element = so.FindProperty("unitSpawnPosition").GetArrayElementAtIndex(i);                        
                 element.vector3Value = gd.UnitSpawnPosition[i];
             }
+
+            var e = so.FindProperty("cameraNonNetworkSpawnPosition");
+            e.vector3Value = gd.CameraNonNetworkSpawnPosition;
+
+            e = so.FindProperty("cameraNonNetworkRotation");
+            e.quaternionValue = gd.CameraNonNetworkRotation;
 
             for (var i=0; i<gd.CameraSpawnPosition.Count; i++) {
                 var element = so.FindProperty("cameraSpawnPosition").GetArrayElementAtIndex(i);                        

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using FGNetworkProgramming;
 using UnityEngine;
 
-public class LocalGameCamera : MonoBehaviour, INetworkGameSpawned
+public class LocalGameCamera : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting
 {
     private Camera gameCamera;
 
@@ -17,10 +17,21 @@ public class LocalGameCamera : MonoBehaviour, INetworkGameSpawned
         gameCamera = GetComponent<Camera>();
     }
 
-    public void OnNetworkGameSpawned(NetworkGame game, ulong clientID)
+    public void OnGameStatePlay(NetworkGame game, int connectionIndex)
     {
-        int idx = (int)clientID;
-        transform.position = LocalGame.Instance.GameData.CameraSpawnPosition[idx];
-        transform.rotation = LocalGame.Instance.GameData.CameraRotation[idx];
+        transform.position = LocalGame.Instance.GameData.CameraSpawnPosition[connectionIndex];
+        transform.rotation = LocalGame.Instance.GameData.CameraRotation[connectionIndex];
+    }
+
+    public void OnGameStateStart(LocalGame game)
+    {
+        transform.position = LocalGame.Instance.GameData.CameraNonNetworkSpawnPosition;
+        transform.rotation = LocalGame.Instance.GameData.CameraNonNetworkRotation;
+    }
+
+    public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
+    {
+        transform.position = LocalGame.Instance.GameData.CameraNonNetworkSpawnPosition;
+        transform.rotation = LocalGame.Instance.GameData.CameraNonNetworkRotation;
     }
 }

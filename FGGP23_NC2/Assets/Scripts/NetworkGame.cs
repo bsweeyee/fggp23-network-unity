@@ -48,21 +48,7 @@ public struct UnitData : INetworkSerializable, System.IEquatable<UnitData>
 /// Network Game tracks GameStates and manages spawned network objects
 /// </summary>
 public class NetworkGame : NetworkBehaviour
-{
-    #region CLIENT-READ, SERVER-WRITE NETWORK VARIABLES
-    private NetworkList<UnitData> unitData;
-
-    public NetworkList<UnitData> UnitData
-    {
-        get { return unitData; }
-    }
-    #endregion
-    
-    void Awake()
-    {
-        unitData = new NetworkList<UnitData>(writePerm: NetworkVariableWritePermission.Server);        
-    }      
-        
+{        
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -73,24 +59,7 @@ public class NetworkGame : NetworkBehaviour
         {                        
             LocalGame.Instance.MyNetworkGameInstance = this;
         }
-
-        unitData.OnListChanged += (NetworkListEvent<UnitData> changeEvent) => {                
-            Debug.Log($"[S] The list changed and now has {unitData.Count} elements\n [{changeEvent.Type}]: {changeEvent.Value.UnitID},{changeEvent.Value.NetworkOwnerID}");
-            
-            switch (changeEvent.Type)
-            {
-                case NetworkListEvent<UnitData>.EventType.Add:                
-                // Unit u = Instantiate(LocalGame.Instance.GameData.Unit);
-                // u.Initialize(changeEvent.Value, NetworkManager.Singleton.LocalClientId);
-                // LocalGame.Instance.UnitInstances.Add(u);
-                break;
-                case NetworkListEvent<UnitData>.EventType.Value:
-                // UnitData ud = changeEvent.Value;
-                // Unit unit = LocalGame.Instance.UnitInstances.Find(x => x.Data.ID == ud.ID);
-                // unit.transform.position = ud.Position;
-                break;                                                
-            }                    
-        };        
+          
         // TODO: remove when player despawns
         LocalGame.Instance.NetworkGameInstances.Add(this);                  
     }
@@ -107,38 +76,22 @@ public class NetworkGame : NetworkBehaviour
     }
 
     #region SERVER RPCs
+    // NOTE: Dangerous to allow any NetworkGame to Despawn unit, even if it is done on server side?
     [Rpc(SendTo.Server)]
     public void DespawnUnitRpc(int unitID)
     {
-        int idxToRemove = -1;
-        foreach(var u in unitData)
-        {
-            idxToRemove++;
-            if (unitID == u.UnitID)
-            {
-                break; 
-            }
-        }
-        if (idxToRemove >= 0)
-        {
-            unitData.RemoveAt(idxToRemove);
-        }
-
         // destroy network unit
-        LocalGame.Instance.NetworkUnitInstances[unitID].GetComponent<NetworkObject>().Despawn();        
+        if (LocalGame.Instance.NetworkUnitInstances.ContainsKey(unitID))
+        {
+            LocalGame.Instance.NetworkUnitInstances[unitID].GetComponent<NetworkObject>().Despawn();        
+        }
     }
 
     [Rpc(SendTo.Server)]
     public void SpawnUnitRpc(int connectionIndex)
     {
         // TODO: do some sanity check here to see if player can spawn unit
-        var ud = new UnitData();
-        ud.NetworkOwnerID = connectionIndex;
-        ud.UnitID = System.Guid.NewGuid().GetHashCode();
-        unitData.Add(ud);
-
-        NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit);
-        ob.transform.position = new Vector3(99, 99, 99); // we set initial position somewhere super far so it does not randomly collide with things
+        NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit);        
         ob.GetComponent<NetworkObject>().Spawn();
 
         var targetID = UnityEngine.Random.Range(0, LocalGame.Instance.GameData.UnitSpawnPosition.Count);
@@ -147,12 +100,13 @@ public class NetworkGame : NetworkBehaviour
             targetID = (targetID+1) % LocalGame.Instance.GameData.UnitSpawnPosition.Count;
         }
 
-        ob.InitializeRpc(connectionIndex, ud.UnitID);                
+        ob.UnitID.Value = System.Guid.NewGuid().GetHashCode(); 
+        ob.OwnerConnectionIndexPlusOne.Value = connectionIndex + 1;
+        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[connectionIndex];                         
         
         ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[targetID];
-        ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;
-        ob.LastAttackTime.Value = Time.time;        
-        ob.ChangeStateRpc(ENetworkUnitState.MOVE);
+        ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;                
+        ob.ChangeState(ENetworkUnitState.MOVE);
     }    
     #endregion    
 }

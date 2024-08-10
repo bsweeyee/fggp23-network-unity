@@ -209,22 +209,22 @@ namespace FGNetworkProgramming
                 var nu = e.Current.Value;
                 using (new GUILayout.HorizontalScope())
                 {
-                    GUILayout.TextArea(nu.OwnerConnectionID.ToString());
-                    GUILayout.TextArea(nu.UnitID.ToString());
+                    GUILayout.TextArea(nu.OwnerConnectionIndexPlusOne.Value.ToString());
+                    GUILayout.TextArea(nu.UnitID.Value.ToString());
                     GUILayout.TextArea($"HP: {nu.Health.Value}");
                     GUILayout.TextArea($"State: {nu.CurrentState.Value}");
                     if (MyNetworkGameInstance.IsServer)
                     {
                         if (GUILayout.Button("Destroy"))
                         {
-                            unitIDToDestroy = nu.UnitID;                                                                                        
+                            unitIDToDestroy = nu.UnitID.Value;                                                                                        
                         }
                     }
                 }                
             }
             if (unitIDToDestroy != 0)
             {
-                networkUnitInstances[unitIDToDestroy].GetComponent<NetworkObject>().Despawn();
+                MyNetworkGameInstance.DespawnUnitRpc(unitIDToDestroy);
             }
 
             var debugRect = new Rect(Screen.width/2, 0, Screen.width/2, Screen.height/4);
@@ -375,7 +375,7 @@ namespace FGNetworkProgramming
                     while (e.MoveNext())
                     {
                         var nu = e.Current.Value;
-                        unitsToRemove.Add(nu.UnitID);    
+                        unitsToRemove.Add(nu.UnitID.Value);    
                     }
                 }
                 foreach(int uID in unitsToRemove)

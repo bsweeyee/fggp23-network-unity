@@ -21,34 +21,50 @@ public enum ENetworkUnitState
 [RequireComponent(typeof(NetworkObject), typeof(NetworkTransform))]
 public class NetworkUnit : NetworkBehaviour
 {
-    #region UNIT DATA    
-    private int unitID;
-    private int ownerConnectionIndex;
-    #endregion
-
     #region SERVER_AND_CLIENT-READ, SERVER-WRITE NETWORK VARIABLES    
+    public NetworkVariable<int> UnitID = new NetworkVariable<int>(writePerm: NetworkVariableWritePermission.Server);
+    // NOTE: We take connection index plus 1 because we want to trigger OnValueChanged callback when it is first set ( by default is 0 ). If OnValueChanged does not trigger, we cannot assign materials correctly
+    public NetworkVariable<int> OwnerConnectionIndexPlusOne = new NetworkVariable<int>(writePerm: NetworkVariableWritePermission.Server);
     public NetworkVariable<Vector3> MoveTarget = new NetworkVariable<Vector3>(writePerm: NetworkVariableWritePermission.Server);    
     public NetworkVariable<ENetworkUnitState> CurrentState = new NetworkVariable<ENetworkUnitState>(writePerm: NetworkVariableWritePermission.Server);
     public NetworkVariable<float> Health = new NetworkVariable<float>(writePerm: NetworkVariableWritePermission.Server);
-    public NetworkVariable<float> LastAttackTime = new NetworkVariable<float>(writePerm: NetworkVariableWritePermission.Server);
     #endregion
+    
+    Queue<int> server_unitIDAttackRequestBuffer; // we have to store a buffer of when a unit request for an attack because client trigger time does not sync up with server trigger time. So there may be situations where client's request to attack is dropped if server time does not match
+    float server_lastAttackTime = 0; // we store a server-side last attack time to ensure that when client triggers an attack, server also agrees that the cooldown for last attack has been cleared
+    float client_lastAttackTime = 0; // we store a client-side last attack time to do a client side overlap sphere check to determine who to attack
 
     MeshRenderer currentRenderer;
+    Collider currentCollider;
 
-    public int UnitID
-    {
-        get { return unitID; }
-    }
-    public int OwnerConnectionID
-    {
-        get { return ownerConnectionIndex; }
-    }
+    int targetUnitID = int.MaxValue;
 
-    int targetAttackOwnerID = 99;    
 
     private void OnEnable()
     {
-        currentRenderer = GetComponentInChildren<MeshRenderer>();        
+        currentRenderer = GetComponentInChildren<MeshRenderer>();
+        currentCollider = GetComponent<SphereCollider>();
+
+        currentCollider.enabled = false;
+        currentRenderer.enabled = false;
+
+        server_unitIDAttackRequestBuffer = new Queue<int>();
+                
+        UnitID.OnValueChanged += (int previousValue, int newValue) => {
+            LocalGame.Instance.NetworkUnitInstances.Add(newValue, this);            
+            currentCollider.enabled = true;
+            currentRenderer.enabled = true;        
+        };
+        OwnerConnectionIndexPlusOne.OnValueChanged += (int previousValue, int newValue) => {
+            if (LocalGame.Instance.ConnectionIndex == newValue - 1)
+            {
+                currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[0] } );            
+            }
+            else
+            {
+                currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[1] } );
+            }
+        };        
     }
 
     private void Update()
@@ -67,22 +83,26 @@ public class NetworkUnit : NetworkBehaviour
         switch(CurrentState.Value)
         {
             case ENetworkUnitState.MOVE:
-            if (LocalGame.Instance.ConnectionIndex == ownerConnectionIndex) 
+            if (LocalGame.Instance.ConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {                
                 // we skip check if it is not the owner
-                targetAttackOwnerID = SelectAttackOwnerID();
-                if (targetAttackOwnerID < 99) ChangeStateRpc(ENetworkUnitState.ATTACK);
+                targetUnitID = SelectAttackUnitID();
+                if (targetUnitID < int.MaxValue) 
+                {
+                    ChangeState(ENetworkUnitState.ATTACK);
+                }
             }
 
             break;
             case ENetworkUnitState.ATTACK:
-            if (LocalGame.Instance.ConnectionIndex == ownerConnectionIndex) 
-            {                
-                if (Time.time - LastAttackTime.Value > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
+            if (LocalGame.Instance.ConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
+            {
+                if (Time.time - client_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
                 {
-                    ExecuteAttackRpc(targetAttackOwnerID);
-                    targetAttackOwnerID = SelectAttackOwnerID();
-                    if (targetAttackOwnerID >= 99) ChangeStateRpc(ENetworkUnitState.MOVE);                                    
+                    ExecuteAttackRpc(targetUnitID);
+                    targetUnitID = SelectAttackUnitID();
+                    if (targetUnitID >= int.MaxValue) ChangeState(ENetworkUnitState.MOVE);                                    
+                    client_lastAttackTime = Time.time;
                 }
             }            
             break;
@@ -104,10 +124,29 @@ public class NetworkUnit : NetworkBehaviour
                 var spawnRadius =LocalGame.Instance.GameData.UnitSpawnRadius[(int)NetworkManager.Singleton.LocalClientId];                
                 if (distanceFromTarget <= spawnRadius)
                 {
-                    ChangeStateRpc(ENetworkUnitState.IDLE);
+                    ChangeState(ENetworkUnitState.IDLE);
                 }                
                 break;
-            }                        
+            }
+
+            if (server_unitIDAttackRequestBuffer.Count > 0)
+            {
+                if (Time.time - server_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
+                {
+                    var tUnitID = server_unitIDAttackRequestBuffer.Dequeue();
+                    if (LocalGame.Instance.NetworkUnitInstances.ContainsKey(tUnitID))
+                    {
+                        NetworkUnit unit = LocalGame.Instance.NetworkUnitInstances[tUnitID];                
+                        unit.GetComponent<NetworkUnit>().Health.Value -= LocalGame.Instance.GameData.UnitAttackStrength;                        
+                        if (unit.GetComponent<NetworkUnit>().Health.Value <= 0)
+                        {                            
+                            unit.GetComponent<NetworkUnit>().ChangeState(ENetworkUnitState.DEAD);
+                        }                
+                    }
+                    server_unitIDAttackRequestBuffer.Clear();
+                    server_lastAttackTime = Time.time;                       
+                } 
+            }
         }
     }   
 
@@ -128,17 +167,33 @@ public class NetworkUnit : NetworkBehaviour
         }
     }
         
-    private int SelectAttackOwnerID()
+    private int SelectAttackUnitID()
     {
         Collider[] hs = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.UnitAttackableLayer);
-        Collider[] notOwnerHS = hs.Where( x=> x.GetComponent<NetworkUnit>().OwnerConnectionID != LocalGame.Instance.ConnectionIndex).ToArray();
+        Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.ConnectionIndex).ToArray();
         
         if (notOwnerHS.Length > 0)
         {
             int idx = UnityEngine.Random.Range(0, notOwnerHS.Length);
-            return notOwnerHS[idx].GetComponent<NetworkUnit>().OwnerConnectionID;                
+            int uID = notOwnerHS[idx].GetComponent<NetworkUnit>().UnitID.Value;
+            return notOwnerHS[idx].GetComponent<NetworkUnit>().UnitID.Value;                
         }                
-        return 99;
+        return int.MaxValue;
+    }
+
+    public void ChangeState(ENetworkUnitState newState)
+    {
+        switch(newState)
+        {
+            case ENetworkUnitState.MOVE:
+            client_lastAttackTime = Time.time;
+            break;
+            case ENetworkUnitState.ATTACK:
+            break;
+            case ENetworkUnitState.DEAD:
+            break;
+        }
+        ChangeStateRpc(newState);
     }
     
     #region Network Callbacks
@@ -150,66 +205,35 @@ public class NetworkUnit : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
-        LocalGame.Instance.NetworkUnitInstances.Remove(unitID);
+        LocalGame.Instance.NetworkUnitInstances.Remove(UnitID.Value);
     }
     #endregion
 
     #region SERVER RPCS
     [Rpc(SendTo.Server)]
-    public void ExecuteAttackRpc(int ownerConnectionIndex)
+    public void ExecuteAttackRpc(int tUnitID)
     {
-        if (Time.time - LastAttackTime.Value > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
-        {
-            NetworkUnit owner = LocalGame.Instance.NetworkUnitInstances[unitID];                
-            owner.GetComponent<NetworkUnit>().Health.Value -= LocalGame.Instance.GameData.UnitAttackStrength;                        
-            if (owner.GetComponent<NetworkUnit>().Health.Value <= 0)
-            {                            
-                owner.GetComponent<NetworkUnit>().ChangeStateRpc(ENetworkUnitState.DEAD);
-            }                
-            LastAttackTime.Value = Time.time;            
-        }
+        server_unitIDAttackRequestBuffer.Enqueue(tUnitID);               
     }
 
     [Rpc(SendTo.Server)]
-    public void ChangeStateRpc(ENetworkUnitState newState)
+    private void ChangeStateRpc(ENetworkUnitState newState)
     {
         switch(newState)
         {
             case ENetworkUnitState.IDLE:
             break;
             case ENetworkUnitState.MOVE:
+            server_lastAttackTime = Time.time;
             break;
             case ENetworkUnitState.ATTACK:
-            LastAttackTime.Value = Time.time;
             break;
             case ENetworkUnitState.DEAD:            
-            Debug.Log($"[{unitID}]: DEAD");
             var owner = LocalGame.Instance.MyNetworkGameInstance;            
-            owner.DespawnUnitRpc(unitID);
+            owner.DespawnUnitRpc(UnitID.Value);
             break;
         }
         CurrentState.Value = newState;
-    }
-    #endregion 
-
-    #region CLIENT_HOST RPCS
-    // NOTE: i'm not sure if I should set position in Client and Host. This should be done in Server
-    [Rpc(SendTo.ClientsAndHost)]
-    public void InitializeRpc(int id, int unitID)
-    {       
-        this.unitID = unitID; 
-        this.ownerConnectionIndex = id;
-        LocalGame.Instance.NetworkUnitInstances.Add(unitID, this);
-        if (LocalGame.Instance.ConnectionIndex == id)
-        {
-            transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[0];
-            currentRenderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[0] } );
-        }
-        else
-        {
-            transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[1];
-            currentRenderer.SetMaterials(new List<Material>{ FGNetworkProgramming.LocalGame.Instance.GameData.GameMaterials[1] } );
-        }
     }
     #endregion    
 }

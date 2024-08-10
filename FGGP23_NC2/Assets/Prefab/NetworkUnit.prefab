@@ -112,7 +112,7 @@ Transform:
   m_GameObject: {fileID: 3058420025155654270}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 99, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -131,7 +131,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 2416231401
+  GlobalObjectIdHash: 1265299886
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -183,6 +183,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc3b6216376143c47ba3baa6adc22027, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UnitID:
+    m_InternalValue: 0
+  OwnerConnectionIndexPlusOne:
+    m_InternalValue: 0
   MoveTarget:
     m_InternalValue: {x: 0, y: 0, z: 0}
   CurrentState:
@@ -204,7 +208,7 @@ SphereCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3

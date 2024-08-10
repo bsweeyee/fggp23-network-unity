@@ -368,14 +368,19 @@ namespace FGNetworkProgramming
                 case EGameState.WAITING:
                 if (backgroundInstance) Destroy(backgroundInstance);
                 
+                var unitsToRemove = new List<int>();
                 if (MyNetworkGameInstance.IsServer)
                 {
                     var e = networkUnitInstances.GetEnumerator();                
                     while (e.MoveNext())
                     {
-                        var nu = e.Current.Value;    
-                        MyNetworkGameInstance.DespawnUnitRpc(nu.UnitID);
+                        var nu = e.Current.Value;
+                        unitsToRemove.Add(nu.UnitID);    
                     }
+                }
+                foreach(int uID in unitsToRemove)
+                {
+                    MyNetworkGameInstance.DespawnUnitRpc(uID);
                 }
 
                 networkUnitInstances.Clear();

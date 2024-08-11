@@ -48,7 +48,7 @@ Objective:
     - PLAY
     - WIN
     - LOSE
-[ ] When player hits spawn position, reduce player health and set to win / lose state depending on who's health falls below 0
+[o] When player hits spawn position, reduce player health and set to win / lose state depending on who's health falls below 0
 [ ] Setup cooldown for each spawn
 [ ] Prevent spawning if there is already a friendly unit at the start -> if implement merging, instantly merge
 [ ] Implement units merging

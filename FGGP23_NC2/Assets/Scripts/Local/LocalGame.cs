@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.VisualScripting;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.EventSystems;
 
 namespace FGNetworkProgramming
 {
@@ -113,8 +114,6 @@ namespace FGNetworkProgramming
 
             networkGameInstances = new List<NetworkGame>();
             networkUnitInstances = new Dictionary<int, NetworkUnit>();
-
-            Input.Instance.Initialize();            
                         
             networkManagerInstance =  Instantiate(gameData.NetworkManager);
             gameViewInstance = Instantiate(gameData.GameView);            
@@ -123,6 +122,7 @@ namespace FGNetworkProgramming
             mainCameraInstance.Initialize(this);
             gameViewInstance.Initialize(this, mainCameraInstance.GameCamera);
 
+            Input.Instance.Initialize();            
             Input.Instance.OnHandleMouseInput.AddListener((Vector2 mousePos, EGameInput input, EInputState state) => {
                 switch(input)
                 {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace FGNetworkProgramming
@@ -41,6 +42,7 @@ namespace FGNetworkProgramming
         private Mouse mouse;
         private Keyboard keyboard;
         private Dictionary<EGameInput, TInputState> gameInputs;
+        private EventSystem eventSystem;
 
         public static Input Instance 
         {
@@ -73,16 +75,20 @@ namespace FGNetworkProgramming
             gameInputs.Add(EGameInput.LEFT_MOUSE_BUTTON, new TInputState(EGameInput.LEFT_MOUSE_BUTTON, EInputState.NONE));        
             gameInputs.Add(EGameInput.RIGHT_MOUSE_BUTTON, new TInputState(EGameInput.RIGHT_MOUSE_BUTTON, EInputState.NONE));        
             gameInputs.Add(EGameInput.SPACE_KEY, new TInputState(EGameInput.SPACE_KEY, EInputState.NONE));
+
+            eventSystem = FindObjectOfType<EventSystem>();
         }
 
         void HandleInputs(EGameInput input, bool isPressed)
         {
+            if (eventSystem == null) eventSystem = FindObjectOfType<EventSystem>();
             if (isPressed)
             {
                 if (gameInputs[input].currentState == EInputState.NONE)
                 {
                     if (input == EGameInput.LEFT_MOUSE_BUTTON || input == EGameInput.RIGHT_MOUSE_BUTTON)
                     {
+                        if (eventSystem.IsPointerOverGameObject()) return; 
                         OnHandleMouseInput?.Invoke(mouse.position.value, input, EInputState.PRESSED);
                         // Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.PRESSED);
                     }
@@ -97,6 +103,7 @@ namespace FGNetworkProgramming
                 {
                     if (input == EGameInput.LEFT_MOUSE_BUTTON || input == EGameInput.RIGHT_MOUSE_BUTTON)
                     {
+                        if (eventSystem.IsPointerOverGameObject()) return;
                         OnHandleMouseInput?.Invoke(mouse.position.value, input, EInputState.HOLD);
                     }
                     else
@@ -112,6 +119,7 @@ namespace FGNetworkProgramming
                 {
                     if (input == EGameInput.LEFT_MOUSE_BUTTON || input == EGameInput.RIGHT_MOUSE_BUTTON)
                     {
+                        if (eventSystem.IsPointerOverGameObject()) return;
                         OnHandleMouseInput?.Invoke(mouse.position.value, input, EInputState.RELEASE);
                         // Debug.Log("[" + input + "]: (" + mouse.position.value + "), " + EInputState.RELEASE);
                     }
@@ -126,7 +134,7 @@ namespace FGNetworkProgramming
         }
 
         void Update()
-        {                        
+        {                                           
            HandleInputs(EGameInput.LEFT_MOUSE_BUTTON, mouse.leftButton.isPressed);
            HandleInputs(EGameInput.SPACE_KEY, keyboard.spaceKey.isPressed);
         }

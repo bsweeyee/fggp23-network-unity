@@ -5,6 +5,7 @@ using Unity.Netcode;
 using FGNetworkProgramming;
 using System.Linq;
 using System;
+using Unity.Collections;
 
 [Serializable]
 public struct UnitData : INetworkSerializable, System.IEquatable<UnitData>
@@ -101,6 +102,11 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         LocalGame.Instance.ChangeState(EGameState.RESTART);
         LocalGame.Instance.ChangeState(EGameState.PLAY);
     }
+    [Rpc(SendTo.Everyone)]
+    private void DistributeMessageRpc(FixedString128Bytes message)
+    {
+        Debug.Log($"message received: {message}");
+    }
     #endregion 
     
     #region SERVER RPCs
@@ -146,6 +152,12 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         ob.ChangeState(ENetworkUnitState.MOVE);
     }
 
+    [Rpc(SendTo.Server)]
+    public void SendMessageRpc(FixedString128Bytes message)
+    {
+        // TODO: validate if message is safe
+        DistributeMessageRpc(message);
+    }
     #endregion
     
     public void OnGameStatePlay(NetworkGame myNetworkGame, int localConnectionIndex)

@@ -14,10 +14,13 @@ namespace FGNetworkProgramming
 
         [SerializeField] private float playerStartHealth = 20.0f;
         [SerializeField] private LayerMask playerAttackableLayer;
+        [SerializeField] private List<string> messages;
 
         public float PlayerStartHealth { get { return playerStartHealth;} }
 
         public LayerMask PlayerAttackableLayer { get { return playerAttackableLayer; }}
+        
+        public List<string> Messages { get { return messages; } }
         #endregion
 
         #region Network Prefabs
@@ -44,7 +47,9 @@ namespace FGNetworkProgramming
 
         [Header("UI Prefabs")]
         [SerializeField] private GameView gameView;
+        [SerializeField] private Canvas messageView;
         public GameView GameView { get { return gameView; }}
+        public Canvas MessageView { get { return messageView; } }
         #endregion
 
         #region Scene Settings

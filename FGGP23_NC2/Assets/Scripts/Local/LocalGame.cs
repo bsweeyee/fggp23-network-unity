@@ -6,6 +6,7 @@ using UnityEditor;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.VisualScripting;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace FGNetworkProgramming
 {
@@ -14,24 +15,35 @@ namespace FGNetworkProgramming
         NONE,
         START,
         WAITING,
+        RESTART,
         PLAY,
         WIN,
-        LOSE
+        LOSE,
     }
 
     public interface IOnGameStatePlay
     {
-        void OnGameStatePlay(NetworkGame game, int clientID);
+        void OnGameStatePlay(NetworkGame myNetworkGame, int localConnectionIndex);
     }
 
     public interface IOnGameStateStart
     {
-        void OnGameStateStart(LocalGame game);
+        void OnGameStateStart(LocalGame myLocalGame);
     }
 
     public interface IOnGameStateWaiting
     {
-        void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game);
+        void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame myLocalGame);
+    }
+
+    public interface IOnGameStateWin
+    {
+        void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame);
+    }
+
+    public interface IOnGameStateLose
+    {
+        void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame);
     }
 
     public class LocalGame : MonoBehaviour
@@ -43,8 +55,10 @@ namespace FGNetworkProgramming
         private LocalGameCamera mainCameraInstance;
         private GameView gameViewInstance;
         private GameObject backgroundInstance;
-        private int connectionIndex = -1;
-        
+        private int localConnectionIndex = -1;
+        private List<GameSpawnHitArea> hitAreas; 
+
+
         Dictionary<int, NetworkUnit> networkUnitInstances;
         List<NetworkGame> networkGameInstances;
         NetworkGame myNetworkGameInstance;        
@@ -76,7 +90,8 @@ namespace FGNetworkProgramming
         {
             get { return networkUnitInstances; }
         }    
-        public int ConnectionIndex { get { return connectionIndex; } }
+        public int LocalConnectionIndex { get { return localConnectionIndex; } }
+        public EGameState CurrentState { get { return currentGameState; } }
 
         public static LocalGame Instance 
         {
@@ -94,6 +109,8 @@ namespace FGNetworkProgramming
         
         void Awake()
         {
+            hitAreas = new List<GameSpawnHitArea>();
+
             networkGameInstances = new List<NetworkGame>();
             networkUnitInstances = new Dictionary<int, NetworkUnit>();
 
@@ -177,8 +194,15 @@ namespace FGNetworkProgramming
             }
             else
             {
-                GUILayout.TextArea("Client ID: " + NetworkManager.Singleton.LocalClientId.ToString());
-                GUILayout.TextArea("Connection index: " + connectionIndex.ToString());
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.TextArea("Client ID: " + NetworkManager.Singleton.LocalClientId.ToString());
+                    GUILayout.TextArea("Connection index: " + localConnectionIndex.ToString());
+                }
+                if (GUILayout.Button("Reset"))
+                {
+                    MyNetworkGameInstance.RestartRpc();
+                }
                 if (GUILayout.Button("Leave"))
                 {
                     NetworkManager.Singleton.Shutdown();                
@@ -192,16 +216,18 @@ namespace FGNetworkProgramming
 
             GUILayout.TextArea($"Current Game State: {currentGameState}");
 
-            if (NetworkManager.Singleton.IsServer)
-            {
-                string clientStrings = "Connected Clients:\n";
-                foreach (var nc in NetworkManager.Singleton.ConnectedClientsList)
+            GUILayout.Label("Network Game Instances:");
+            var nge = NetworkGameInstances.GetEnumerator();
+            while(nge.MoveNext())
+            {                
+                using (new GUILayout.HorizontalScope())
                 {
-                    clientStrings += nc.ClientId + "\n";
+                    GUILayout.TextArea($"Connection Index: {nge.Current.ConnectionIndex.Value}");
+                    GUILayout.TextArea($"Game HP: {nge.Current.PlayerHealth.Value}");
                 }
-                GUILayout.TextArea(clientStrings);
-            }
-
+            }            
+            
+            GUILayout.Label("Network Unit Instances");
             var e = networkUnitInstances.GetEnumerator();
             int unitIDToDestroy = 0;
             while (e.MoveNext())
@@ -209,7 +235,7 @@ namespace FGNetworkProgramming
                 var nu = e.Current.Value;
                 using (new GUILayout.HorizontalScope())
                 {
-                    GUILayout.TextArea(nu.OwnerConnectionIndexPlusOne.Value.ToString());
+                    GUILayout.TextArea((nu.OwnerConnectionIndexPlusOne.Value-1).ToString());
                     GUILayout.TextArea(nu.UnitID.Value.ToString());
                     GUILayout.TextArea($"HP: {nu.Health.Value}");
                     GUILayout.TextArea($"State: {nu.CurrentState.Value}");
@@ -275,11 +301,10 @@ namespace FGNetworkProgramming
                 case ConnectionEvent.ClientConnected:
                 if (c.ClientId == m.LocalClientId)
                 {
-                    connectionIndex = c.PeerClientIds.Length;                                                                
+                    localConnectionIndex = c.PeerClientIds.Length;
+                    MyNetworkGameInstance.SetConnectionIndexRpc(localConnectionIndex);                                                                
                 }
-                
-                // NOTE: this state change is also done in a player's NetworkGame because we don't know which callback runs first
-                
+                                
                 var connectedClientCount = 0;
                 if (NetworkManager.Singleton.IsServer)
                 {
@@ -302,12 +327,11 @@ namespace FGNetworkProgramming
                 case ConnectionEvent.ClientDisconnected:
                 if (c.ClientId == m.LocalClientId)
                 {                                                                                    
-                    connectionIndex = -1;
+                    localConnectionIndex = -1;
                     ChangeState(EGameState.START);
                 }
                 else
                 {                    
-                    // NOTE: this state change is also done in a player's NetworkGame because we don't know which callback runs first 
                     int connectedClientCount2 = 0;
                     if (NetworkManager.Singleton.IsServer)
                     {                                               
@@ -340,8 +364,43 @@ namespace FGNetworkProgramming
         void HandleServerStop(bool b)
         {
             Debug.Log($"server stopped: {b}");
-            connectionIndex = -1;            
+            localConnectionIndex = -1;            
             ChangeState(EGameState.START);
+        }
+        
+        void ClearNetworkUnits()
+        {
+            if (MyNetworkGameInstance != null && MyNetworkGameInstance.IsServer)
+            {
+                var unitsToRemove = new List<int>();
+                var e = networkUnitInstances.GetEnumerator();                
+                while (e.MoveNext())
+                {
+                    var nu = e.Current.Value;
+                    if (nu != null)
+                    {
+                        unitsToRemove.Add(nu.UnitID.Value);    
+                    }
+                }
+
+                foreach(int uID in unitsToRemove)
+                {
+                    if (MyNetworkGameInstance != null)
+                    {
+                        MyNetworkGameInstance.DespawnUnitRpc(uID);
+                    }
+                }
+            }
+            networkUnitInstances.Clear();
+        }
+
+        void ClearHitAreas()
+        {
+            foreach(var gsha in hitAreas)
+            {
+                Destroy(gsha.gameObject);
+            }
+            hitAreas.Clear();
         }
 
         public void ChangeState(EGameState newState)
@@ -353,10 +412,11 @@ namespace FGNetworkProgramming
                 case EGameState.START:
                 if (backgroundInstance) Destroy(backgroundInstance);
                 
-                NetworkGameInstances.Clear();
-                networkUnitInstances.Clear();
+                ClearHitAreas();
+                ClearNetworkUnits();
 
-                myNetworkGameInstance = null;
+                NetworkGameInstances.Clear();
+                MyNetworkGameInstance = null;
 
                 var startStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateStart>();
                 foreach(var ni in startStateInterfaces)
@@ -368,22 +428,8 @@ namespace FGNetworkProgramming
                 case EGameState.WAITING:
                 if (backgroundInstance) Destroy(backgroundInstance);
                 
-                var unitsToRemove = new List<int>();
-                if (MyNetworkGameInstance.IsServer)
-                {
-                    var e = networkUnitInstances.GetEnumerator();                
-                    while (e.MoveNext())
-                    {
-                        var nu = e.Current.Value;
-                        unitsToRemove.Add(nu.UnitID.Value);    
-                    }
-                }
-                foreach(int uID in unitsToRemove)
-                {
-                    MyNetworkGameInstance.DespawnUnitRpc(uID);
-                }
-
-                networkUnitInstances.Clear();
+                ClearHitAreas();                
+                ClearNetworkUnits();
 
                 var waitingStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateWaiting>();
                 foreach(var ni in waitingStateInterfaces)
@@ -393,21 +439,53 @@ namespace FGNetworkProgramming
                 break;
 
                 case EGameState.PLAY:
-                backgroundInstance = Instantiate(gameData.BackgroundPrefab);                
+                backgroundInstance = Instantiate(gameData.BackgroundPrefab);
+
+                // spawn hit areas
+                for (int i = 0; i<GameData.UnitSpawnPosition.Count; i++)
+                {
+                    GameSpawnHitArea a = Instantiate(GameData.HitAreaPrefab);
+                    a.Initialize(i, GameData.UnitSpawnPosition[i], GameData.UnitSpawnRadius[i]);
+                    hitAreas.Add(a);
+                }                                
                 
                 var playStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStatePlay>();
                 foreach(var ni in playStateInterfaces)
                 {
-                    ni.OnGameStatePlay(myNetworkGameInstance, connectionIndex);
+                    ni.OnGameStatePlay(myNetworkGameInstance, localConnectionIndex);
                 }
                 break;
 
                 case EGameState.WIN:
                 if (backgroundInstance) Destroy(backgroundInstance);
+                
+                ClearHitAreas();
+                ClearNetworkUnits();
+
+                var winStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateWin>();
+                foreach(var ni in winStateInterfaces)
+                {
+                    ni.OnGameStateWin(myNetworkGameInstance, this);
+                }
                 break;
 
                 case EGameState.LOSE:
                 if (backgroundInstance) Destroy(backgroundInstance);
+                
+                ClearHitAreas();
+                ClearNetworkUnits();
+
+                var loseStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateLose>();
+                foreach(var ni in loseStateInterfaces)
+                {
+                    ni.OnGameStateLose(myNetworkGameInstance, this);
+                }
+                break;
+                case EGameState.RESTART:
+                if (backgroundInstance) Destroy(backgroundInstance);
+                
+                ClearHitAreas();
+                ClearNetworkUnits();
                 break;
             }
             currentGameState = newState;

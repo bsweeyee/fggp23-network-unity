@@ -56,7 +56,7 @@ public class NetworkUnit : NetworkBehaviour
             currentRenderer.enabled = true;        
         };
         OwnerConnectionIndexPlusOne.OnValueChanged += (int previousValue, int newValue) => {
-            if (LocalGame.Instance.ConnectionIndex == newValue - 1)
+            if (LocalGame.Instance.LocalConnectionIndex == newValue - 1)
             {
                 currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[0] } );            
             }
@@ -69,24 +69,34 @@ public class NetworkUnit : NetworkBehaviour
 
     private void Update()
     {
-        LocalUpdate(Time.deltaTime);
-        ServerUpdate(Time.deltaTime);
+        switch(LocalGame.Instance.CurrentState)
+        {
+            case EGameState.PLAY:
+            OnPlayStateLocalUpdate(Time.deltaTime);
+            OnPlayServerUpdate(Time.deltaTime);
+            break;
+        }
     }      
 
     private void FixedUpdate()
     {
-        FixedServerUpdate(Time.fixedDeltaTime);
+        switch(LocalGame.Instance.CurrentState)
+        {
+            case EGameState.PLAY:
+            OnPlayFixedServerUpdate(Time.fixedDeltaTime);
+            break;
+        }
     }
 
-    private void LocalUpdate(float dt)
+    private void OnPlayStateLocalUpdate(float dt)
     {
         switch(CurrentState.Value)
         {
             case ENetworkUnitState.MOVE:
-            if (LocalGame.Instance.ConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
+            if (LocalGame.Instance.LocalConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {                
                 // we skip check if it is not the owner
-                targetUnitID = SelectAttackUnitID();
+                targetUnitID = SelectAttackTarget();
                 if (targetUnitID < int.MaxValue) 
                 {
                     ChangeState(ENetworkUnitState.ATTACK);
@@ -95,12 +105,12 @@ public class NetworkUnit : NetworkBehaviour
 
             break;
             case ENetworkUnitState.ATTACK:
-            if (LocalGame.Instance.ConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
+            if (LocalGame.Instance.LocalConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {
                 if (Time.time - client_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
                 {
                     ExecuteAttackRpc(targetUnitID);
-                    targetUnitID = SelectAttackUnitID();
+                    targetUnitID = SelectAttackTarget();
                     if (targetUnitID >= int.MaxValue) ChangeState(ENetworkUnitState.MOVE);                                    
                     client_lastAttackTime = Time.time;
                 }
@@ -109,14 +119,36 @@ public class NetworkUnit : NetworkBehaviour
         }
     }
 
-    private void ServerUpdate(float dt)
+    private void OnPlayServerUpdate(float dt)
     {
         if (IsServer)
         {
             switch(CurrentState.Value)
             {
                 case ENetworkUnitState.ATTACK:
-                
+                if (server_unitIDAttackRequestBuffer.Count > 0)
+                {
+                    if (Time.time - server_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
+                    {
+                        var tUnitID = server_unitIDAttackRequestBuffer.Dequeue();
+                        if (LocalGame.Instance.NetworkUnitInstances.ContainsKey(tUnitID))
+                        {
+                            NetworkUnit unit = LocalGame.Instance.NetworkUnitInstances[tUnitID];                
+                            unit.GetComponent<NetworkUnit>().Health.Value -= LocalGame.Instance.GameData.UnitAttackStrength;                        
+                            if (unit.GetComponent<NetworkUnit>().Health.Value <= 0)
+                            {                            
+                                unit.GetComponent<NetworkUnit>().ChangeState(ENetworkUnitState.DEAD);
+                            }                
+                        } else if (tUnitID < int.MaxValue && tUnitID >= int.MaxValue - GameData.NUMBER_OF_PLAYERS)
+                        {
+                            var id = int.MaxValue - tUnitID - 1;                        
+                            var ng = LocalGame.Instance.NetworkGameInstances.Find( x => x.ConnectionIndex.Value == id);
+                            ng.PlayerHealth.Value -= LocalGame.Instance.GameData.UnitAttackStrength;                    
+                        }
+                        server_unitIDAttackRequestBuffer.Clear();
+                        server_lastAttackTime = Time.time;                       
+                    } 
+                }                
                 break;
                 case ENetworkUnitState.MOVE:
                 // TODO: move to use collision sphere when things get complicated
@@ -128,29 +160,10 @@ public class NetworkUnit : NetworkBehaviour
                 }                
                 break;
             }
-
-            if (server_unitIDAttackRequestBuffer.Count > 0)
-            {
-                if (Time.time - server_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
-                {
-                    var tUnitID = server_unitIDAttackRequestBuffer.Dequeue();
-                    if (LocalGame.Instance.NetworkUnitInstances.ContainsKey(tUnitID))
-                    {
-                        NetworkUnit unit = LocalGame.Instance.NetworkUnitInstances[tUnitID];                
-                        unit.GetComponent<NetworkUnit>().Health.Value -= LocalGame.Instance.GameData.UnitAttackStrength;                        
-                        if (unit.GetComponent<NetworkUnit>().Health.Value <= 0)
-                        {                            
-                            unit.GetComponent<NetworkUnit>().ChangeState(ENetworkUnitState.DEAD);
-                        }                
-                    }
-                    server_unitIDAttackRequestBuffer.Clear();
-                    server_lastAttackTime = Time.time;                       
-                } 
-            }
         }
     }   
 
-    private void FixedServerUpdate(float dt)
+    private void OnPlayFixedServerUpdate(float dt)
     {
         if (IsServer)
         {
@@ -167,16 +180,25 @@ public class NetworkUnit : NetworkBehaviour
         }
     }
         
-    private int SelectAttackUnitID()
+    private int SelectAttackTarget()
     {
+        Collider[] ps = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.PlayerAttackableLayer);        
         Collider[] hs = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.UnitAttackableLayer);
-        Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.ConnectionIndex).ToArray();
+        
+        Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.LocalConnectionIndex).ToArray();                   
+        Collider[] notFriendlyPS = ps.Where(x => x.GetComponent<GameSpawnHitArea>().OwnerConnectionIndex != (OwnerConnectionIndexPlusOne.Value - 1)).ToArray();
+
         
         if (notOwnerHS.Length > 0)
         {
             int idx = UnityEngine.Random.Range(0, notOwnerHS.Length);
             int uID = notOwnerHS[idx].GetComponent<NetworkUnit>().UnitID.Value;
             return notOwnerHS[idx].GetComponent<NetworkUnit>().UnitID.Value;                
+        } else if (notFriendlyPS.Length > 0)
+        {
+            int idx = UnityEngine.Random.Range(0, notFriendlyPS.Length);
+            int uID = notFriendlyPS[idx].GetComponent<GameSpawnHitArea>().OwnerConnectionIndex + 1;                                     
+            return int.MaxValue - uID; // we return the ownerConnectionIndex instead of Unit index if we are hitting the player
         }                
         return int.MaxValue;
     }

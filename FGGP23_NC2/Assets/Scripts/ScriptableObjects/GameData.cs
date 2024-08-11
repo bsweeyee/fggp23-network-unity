@@ -11,6 +11,13 @@ namespace FGNetworkProgramming
     {
         #region Game Settings
         public static int NUMBER_OF_PLAYERS = 2;
+
+        [SerializeField] private float playerStartHealth = 20.0f;
+        [SerializeField] private LayerMask playerAttackableLayer;
+
+        public float PlayerStartHealth { get { return playerStartHealth;} }
+
+        public LayerMask PlayerAttackableLayer { get { return playerAttackableLayer; }}
         #endregion
 
         #region Network Prefabs
@@ -25,10 +32,12 @@ namespace FGNetworkProgramming
         #region Game Assets / Prefabs
         [Header("Game Assets / Prefabs")]
         [SerializeField] private List<Material> gameMaterials = new List<Material>();        
-        [SerializeField] private GameObject backgroundPrefab;        
+        [SerializeField] private GameObject backgroundPrefab;
+        [SerializeField] private GameSpawnHitArea hitAreaPrefab;        
 
         public List<Material> GameMaterials { get { return gameMaterials; }}
         public GameObject BackgroundPrefab { get { return backgroundPrefab; }}
+        public GameSpawnHitArea HitAreaPrefab { get { return hitAreaPrefab; }}
         #endregion        
 
         #region UI Prefabs
@@ -38,9 +47,9 @@ namespace FGNetworkProgramming
         public GameView GameView { get { return gameView; }}
         #endregion
 
-        #region Game Settings
+        #region Scene Settings
 
-        [Header("Game Settings")]
+        [Header("Scene Settings")]
         [SerializeField] private Vector3 cameraNonNetworkSpawnPosition = Vector3.zero;
         [SerializeField] private Quaternion cameraNonNetworkRotation = Quaternion.identity;
 

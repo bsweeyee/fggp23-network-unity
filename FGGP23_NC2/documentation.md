@@ -80,6 +80,6 @@ Based on local testing, OnNetworkSpawn triggers first, then OnClientConnected.
 Why this is important is because I used the default spawned player object to handle things like adding NetworkGame(a player) to the master list.
 
 TODO:
-- Finish Game State handling
-- Fix bug with player attacking
-- Handle game end loop
+[o] Finish Game State handling
+[o] Fix bug with player attacking
+[ ] Handle game end loop

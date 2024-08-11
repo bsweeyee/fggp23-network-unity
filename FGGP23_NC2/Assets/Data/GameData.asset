@@ -12,12 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83c1d97857a13644fb79c46a77e66226, type: 3}
   m_Name: GameData
   m_EditorClassIdentifier: 
+  playerStartHealth: 20
+  playerAttackableLayer:
+    serializedVersion: 2
+    m_Bits: 128
   networkManager: {fileID: 2226544024732929039, guid: 794686844295f3f47b3a8d48d2456d73, type: 3}
   networkUnit: {fileID: 4135238962880227402, guid: a4618372d39fc2641aeafe7613716a1f, type: 3}
   gameMaterials:
   - {fileID: 2100000, guid: d5407c2272b38a94093345610d8a5c37, type: 2}
   - {fileID: 2100000, guid: 5f9dfa9f939084840bce5cdd96e0a0cc, type: 2}
   backgroundPrefab: {fileID: 2286388773620411110, guid: 99a7cd7a6bf7f39488a833ead99adc26, type: 3}
+  hitAreaPrefab: {fileID: 7717857679220215128, guid: 5b3b83ec1be77674bb5af80238dea883, type: 3}
   gameView: {fileID: 346374073063469233, guid: ff3c09ef6f9c08d41b3c8945162d0b94, type: 3}
   cameraNonNetworkSpawnPosition: {x: 4.5, y: 4, z: -5.5}
   cameraNonNetworkRotation: {x: -0.24321035, y: 0.33036616, z: -0.08852134, w: -0.90767336}

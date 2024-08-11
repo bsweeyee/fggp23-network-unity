@@ -8,7 +8,7 @@ using Unity.Netcode;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 
-public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting
+public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose
 {       
     [SerializeField] private Button spawnUnit;
 
@@ -32,7 +32,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         spawnUnit.onClick.RemoveAllListeners();
         spawnUnit.onClick.AddListener(() => {
             // TODO: Figure out a way to abstract the need to reference networkGame from View
-            networkGame.SpawnUnitRpc(LocalGame.Instance.ConnectionIndex);
+            networkGame.SpawnUnitRpc(LocalGame.Instance.LocalConnectionIndex);
         });
     }
 
@@ -42,6 +42,16 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
     {
         gameObject.SetActive(false);
     }

@@ -16,6 +16,8 @@ MonoBehaviour:
   playerAttackableLayer:
     serializedVersion: 2
     m_Bits: 128
+  messageSendCooldownInSeconds: 3
+  messageDisplayCooldownInSeconds: 2
   messages:
   - Well Played
   - The Light shall burn you!

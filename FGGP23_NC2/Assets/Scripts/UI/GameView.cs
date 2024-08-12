@@ -21,7 +21,11 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     private Dictionary<int, Canvas> replyViewCanvasInstances;
     private EventSystem eventSystem;
 
-    private List<Button> messageButtons;
+    private List<Button> messageButtons; // NOTE: Last button is always the custom message button
+
+    private Dictionary<int, float> lastReplyCanvasDisplayTime;
+    private float lastMessageSendTime = -1;
+    
     public void Initialize(LocalGame localGame, Camera worldCamera)
     {
         // Initialize game view canvas
@@ -61,6 +65,22 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         customMessageInput.onValueChanged.AddListener( (string text) => {
             var childTMP = messageButtons[messageButtons.Count - 1].GetComponentInChildren<TextMeshProUGUI>();
             childTMP.text = text;
+            if (String.IsNullOrEmpty(text))
+            {
+                messageButtons[messageButtons.Count - 1].interactable = false;                
+                childTMP.text = LocalGame.Instance.GameData.Messages[messageButtons.Count - 1];
+            }
+            else
+            {
+                if (lastMessageSendTime < 0)
+                {
+                    messageButtons[messageButtons.Count - 1].interactable = true;
+                }
+                else
+                {
+                    messageButtons[messageButtons.Count - 1].interactable = false;
+                }
+            }
         });
 
         openMessageButton.onClick.AddListener(() => {
@@ -72,6 +92,65 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     
         // Initialize reply view
         replyViewCanvasInstances = new Dictionary<int, Canvas>();
+        lastReplyCanvasDisplayTime = new Dictionary<int, float>();
+
+        for(int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)
+        {
+            var replyViewCanvasInstance = Instantiate(LocalGame.Instance.GameData.ReplyView);
+            replyViewCanvasInstance.renderMode = RenderMode.WorldSpace;
+            replyViewCanvasInstance.worldCamera = LocalGame.Instance.MainCamera.GameCamera;
+            replyViewCanvasInstance.gameObject.SetActive(false);
+
+            replyViewCanvasInstances.Add(i, replyViewCanvasInstance);
+        }
+    }
+    
+    private void Update()
+    {
+        switch (LocalGame.Instance.CurrentState)
+        {
+            case EGameState.MULTIPLAYER_PLAY:
+            var e = lastReplyCanvasDisplayTime.GetEnumerator();                
+            var toRemove = new List<int>();
+            while(e.MoveNext())
+            {            
+                var lastDisplayTime = e.Current.Value;
+                if (Time.time - lastDisplayTime > LocalGame.Instance.GameData.MessageDisplayCooldownInSeconds)
+                {
+                    replyViewCanvasInstances[e.Current.Key].gameObject.SetActive(false);                
+                    toRemove.Add(e.Current.Key);
+                }
+            }
+
+            foreach(var k in toRemove)
+            {
+                lastReplyCanvasDisplayTime.Remove(k);
+            }
+
+            if (lastMessageSendTime >= 0 && Time.time - lastMessageSendTime > LocalGame.Instance.GameData.MessageSendCooldownInSeconds)
+            {
+                for(int i=0; i<messageButtons.Count; i++)
+                {
+                    if (i == messageButtons.Count - 1)
+                    {
+                        if (String.IsNullOrEmpty(customMessageInput.text))
+                        {
+                            messageButtons[i].interactable = false;                        
+                        }
+                        else
+                        {
+                            messageButtons[i].interactable = true;
+                        }
+                    }
+                    else
+                    {
+                        messageButtons[i].interactable = true;
+                    }
+                }
+                lastMessageSendTime = -1;
+            }
+            break;
+        }
     }
 
     void HandleMouseInput(Vector2 position, EGameInput input, EInputState state)
@@ -86,6 +165,8 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
             customMessageInput.text = "";
             var tmp = messageButtons[messageButtons.Count - 1].GetComponentInChildren<TextMeshProUGUI>();            
             tmp.text = LocalGame.Instance.GameData.Messages[messageButtons.Count - 1];
+
+            customMessageInput.SetTextWithoutNotify("");            
         }
     }
 
@@ -107,13 +188,10 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         messageViewCanvasInstance.transform.position += (projectedD * 0.9f);
 
         // reposition ReplyViewCanvases to face the camera and also closer to camera view plane
-        foreach(var ng in LocalGame.Instance.NetworkGameInstances)
+        for(int i=0; i<LocalGame.Instance.NetworkGameInstances.Count; i++)
         {
-            var replyViewCanvasInstance = Instantiate(LocalGame.Instance.GameData.ReplyView);
-            replyViewCanvasInstance.renderMode = RenderMode.WorldSpace;
-            replyViewCanvasInstance.worldCamera = LocalGame.Instance.MainCamera.GameCamera;
-            replyViewCanvasInstance.gameObject.SetActive(false);
-
+            var ng = LocalGame.Instance.NetworkGameInstances[i];
+            var replyViewCanvasInstance = replyViewCanvasInstances[i];            
             replyViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[ng.ConnectionIndex.Value];
             replyViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];
             
@@ -121,8 +199,6 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
             projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                     
             replyViewCanvasInstance.transform.position += (projectedD * 0.9f);
-
-            replyViewCanvasInstances.Add(ng.ConnectionIndex.Value, replyViewCanvasInstance);
         }        
 
         // initialize message buttons
@@ -131,6 +207,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
             var button = messageButtons[i];
             if (i == messageViewCanvasInstance.transform.childCount - 1)
             {
+                button.interactable = false;                                
                 button.onClick.AddListener(() => {
                     if (!String.IsNullOrEmpty(customMessageInput.text))
                     {
@@ -139,22 +216,40 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
                     messageViewCanvasInstance.gameObject.SetActive(false);
                     customMessageInput.gameObject.SetActive(false);                                    
                     openMessageButton.gameObject.SetActive(true);
+                    
+                    foreach(var b in messageButtons)
+                    {
+                        b.interactable = false;
+                    }
+                    lastMessageSendTime = Time.time;
+                    customMessageInput.text = "";
                 });
             }
             else
             {
+                button.interactable = true;
                 string m = LocalGame.Instance.GameData.Messages[i];
                 button.onClick.AddListener(() => {                    
                     networkGame.SendMessageRpc(m, LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value);
                     messageViewCanvasInstance.gameObject.SetActive(false);
                     customMessageInput.gameObject.SetActive(false);                                    
-                    openMessageButton.gameObject.SetActive(true);                                        
+                    openMessageButton.gameObject.SetActive(true);
+                    button.interactable = false;
+
+                    foreach(var b in messageButtons)
+                    {
+                        b.interactable = false;
+                    }
+                    lastMessageSendTime = Time.time;
+                    customMessageInput.text = "";                                        
                 });
             }
             
             var childTMP = button.GetComponentInChildren<TextMeshProUGUI>();
             childTMP.text = LocalGame.Instance.GameData.Messages[i];
-        }
+        }        
+
+        lastMessageSendTime = -1;
     }
 
     public void OnGameStateStart(LocalGame game)
@@ -171,6 +266,9 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             rvce.Current.Value.gameObject.SetActive(false);
         }
+
+        lastMessageSendTime = -1;
+        lastReplyCanvasDisplayTime.Clear();
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
@@ -181,6 +279,9 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             messageButtons[i].onClick.RemoveAllListeners();
         }
+
+        lastMessageSendTime = -1;
+        lastReplyCanvasDisplayTime.Clear();
     }
 
     public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -196,6 +297,9 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             rvce.Current.Value.gameObject.SetActive(false);
         }
+
+        lastMessageSendTime = -1;
+        lastReplyCanvasDisplayTime.Clear();
     }
 
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -212,13 +316,23 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             rvce.Current.Value.gameObject.SetActive(false);
         }
+
+        lastMessageSendTime = -1;
+        lastReplyCanvasDisplayTime.Clear();
     }
 
     public void OnMessageReceieved(string message, int ownerconnectionIndex)
-    {
-        // TODO: add to queue and buffer it instead
+    {        
         replyViewCanvasInstances[ownerconnectionIndex].gameObject.SetActive(true);
         var tmp = replyViewCanvasInstances[ownerconnectionIndex].gameObject.GetComponentInChildren<TextMeshProUGUI>();
         tmp.text = message;
+        if (lastReplyCanvasDisplayTime.ContainsKey(ownerconnectionIndex))
+        {
+            lastReplyCanvasDisplayTime[ownerconnectionIndex] = Time.time;
+        }
+        else
+        {
+            lastReplyCanvasDisplayTime.Add(ownerconnectionIndex, Time.time);
+        }
     }
 }

@@ -14,12 +14,19 @@ namespace FGNetworkProgramming
 
         [SerializeField] private float playerStartHealth = 20.0f;
         [SerializeField] private LayerMask playerAttackableLayer;
+        
+        [SerializeField] private float messageSendCooldownInSeconds = 1.5f;
+        [SerializeField] private float messageDisplayCooldownInSeconds = 1.0f;
         [SerializeField] private List<string> messages;
 
         public float PlayerStartHealth { get { return playerStartHealth;} }
 
         public LayerMask PlayerAttackableLayer { get { return playerAttackableLayer; }}
         
+        public float MessageSendCooldownInSeconds { get { return messageSendCooldownInSeconds; }}
+
+        public float MessageDisplayCooldownInSeconds { get { return messageDisplayCooldownInSeconds; }}
+
         public List<string> Messages { get { return messages; } }
         #endregion
 

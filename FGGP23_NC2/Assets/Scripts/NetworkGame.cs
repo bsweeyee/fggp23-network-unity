@@ -6,6 +6,7 @@ using FGNetworkProgramming;
 using System.Linq;
 using System;
 using Unity.Collections;
+using System.Net.Mail;
 
 /// <summary>
 /// THIS IS NOW OBSOLETE, DO NOT USE
@@ -52,6 +53,12 @@ public struct UnitData : INetworkSerializable, System.IEquatable<UnitData>
     }
 }
 
+public struct TMessagePacket
+{
+    public int SenderConnectionIndex;
+    public string Message;
+}
+
 public interface IOnMessageReceived {
     void OnMessageReceieved(string message, int ownerconnectionIndex);
 }
@@ -62,11 +69,19 @@ public interface IOnMessageReceived {
 public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
 {
     public NetworkVariable<float> PlayerHealth = new NetworkVariable<float>(writePerm: NetworkVariableWritePermission.Server);    
+    
+    // This will control when the MULIPLAYER_PLAY state is triggered. 
     public NetworkVariable<int> ConnectionIndex = new NetworkVariable<int>(writePerm: NetworkVariableWritePermission.Server);
     
     private bool hasAssignedConnectionIndex = false;
+
+    private Queue<TMessagePacket> server_MessageQueue;
+    private float client_LastMessageTime;
+    private float server_LastMessageTime;
+
     void Start()
     {
+        server_MessageQueue = new Queue<TMessagePacket>();
         PlayerHealth.OnValueChanged += (float oldValue, float newValue) => {
             if (newValue <= 0)
             {
@@ -80,7 +95,7 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                 }
             }
         };        
-        // NOTE: connection index relays number of player information so it should work
+        // NOTE: connection index tracks number of player information so doing the check for state change should work here                 
         ConnectionIndex.OnValueChanged += (int oldValue, int newValue) => {            
             // NOTE: the host does not receive this callback because first value is initialized as 0. ( so OnValueChanged is not called. We work around the state change by handling it OnServerStarted )        
             if (newValue + 1 >= GameData.NUMBER_OF_PLAYERS)
@@ -254,6 +269,21 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;
     }
 
+    void Update()
+    {
+        if (IsServer)
+        {
+            if (server_MessageQueue.Count > 0)
+            {
+                if (Time.time - server_LastMessageTime > LocalGame.Instance.GameData.MessageSendCooldownInSeconds)
+                {
+                    var mp = server_MessageQueue.Dequeue();
+                    DistributeMessageRpc(mp.Message, mp.SenderConnectionIndex);                    
+                }
+            }
+        }
+    }
+
     #region EVERYONE RPCS
     [Rpc(SendTo.Everyone)]
     public void RestartRpc()
@@ -263,18 +293,17 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     }
     [Rpc(SendTo.Everyone)]
     private void DistributeMessageRpc(FixedString128Bytes message, int senderConnectionIndex)
-    {        
+    {                
         var receivedMessageInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnMessageReceived>().ToArray();
         foreach(var rmi in receivedMessageInterfaces)
         {
             rmi.OnMessageReceieved(message.ToString(), senderConnectionIndex);
         }
-        Debug.Log($"message received: {message}");
     }
     #endregion 
     
     #region SERVER RPCs
-    // NOTE: Dangerous to allow any NetworkGame to Despawn unit, even if it is done on server side?
+    // NOTE: Seems dangerous to allow any NetworkGame to Despawn unit, even if it is a server rpc call
     [Rpc(SendTo.Server)]
     public void DespawnUnitRpc(int unitID)
     {
@@ -313,8 +342,10 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     [Rpc(SendTo.Server)]
     public void SendMessageRpc(FixedString128Bytes message, int senderConnectionIndex)
     {
-        // TODO: validate if message is safe
-        DistributeMessageRpc(message, senderConnectionIndex);
+        TMessagePacket mp = new TMessagePacket();
+        mp.Message = message.ToString();
+        mp.SenderConnectionIndex = senderConnectionIndex;        
+        server_MessageQueue.Enqueue(mp);        
     }
     #endregion
     

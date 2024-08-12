@@ -165,6 +165,12 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             messageButtons[i].onClick.RemoveAllListeners();
         }
+
+        var rvce = replyViewCanvasInstances.GetEnumerator();
+        while (rvce.MoveNext())
+        {
+            rvce.Current.Value.gameObject.SetActive(false);
+        }
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
@@ -185,6 +191,11 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             messageButtons[i].onClick.RemoveAllListeners();
         }
+        var rvce = replyViewCanvasInstances.GetEnumerator();
+        while (rvce.MoveNext())
+        {
+            rvce.Current.Value.gameObject.SetActive(false);
+        }
     }
 
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -194,6 +205,12 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         for (int i=0; i<messageButtons.Count; i++)
         {
             messageButtons[i].onClick.RemoveAllListeners();
+        }
+
+        var rvce = replyViewCanvasInstances.GetEnumerator();
+        while (rvce.MoveNext())
+        {
+            rvce.Current.Value.gameObject.SetActive(false);
         }
     }
 

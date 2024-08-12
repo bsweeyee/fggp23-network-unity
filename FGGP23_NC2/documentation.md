@@ -90,7 +90,8 @@ TODO:
 
 ## 12/06/2024
 TODO:
-[ ] Emote feedback
+[o] Refactored Connection Index such that it should no longer have desync
+[?] Emote feedback
 [ ] Upgrade to use Unity Input system ( 2nd method )
 [ ] Add multiple lanes
 [ ] Select a unit and change lanes

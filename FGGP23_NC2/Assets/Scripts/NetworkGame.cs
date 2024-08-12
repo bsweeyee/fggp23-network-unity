@@ -52,6 +52,8 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
 {
     public NetworkVariable<float> PlayerHealth = new NetworkVariable<float>(writePerm: NetworkVariableWritePermission.Server);    
     public NetworkVariable<int> ConnectionIndex = new NetworkVariable<int>(writePerm: NetworkVariableWritePermission.Server);
+    
+    private bool hasAssignedConnectionIndex = false;
     void Start()
     {
         PlayerHealth.OnValueChanged += (float oldValue, float newValue) => {
@@ -66,6 +68,18 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                     LocalGame.Instance.ChangeState(EGameState.WIN);
                 }
             }
+        };        
+        // NOTE: connection index relays number of player information so it should work
+        ConnectionIndex.OnValueChanged += (int oldValue, int newValue) => {            
+            // NOTE: the host does not receive this callback because first value is initialized as 0. ( so OnValueChanged is not called. We work around the state change by handling it OnServerStarted )        
+            if (newValue + 1 >= GameData.NUMBER_OF_PLAYERS)
+            {
+                LocalGame.Instance.ChangeState(EGameState.MULTIPLAYER_PLAY);
+            }
+            else
+            {
+                LocalGame.Instance.ChangeState(EGameState.WAITING);                
+            }            
         };
     }
 
@@ -76,12 +90,44 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         Debug.Log($"[{NetworkObjectId}] Network Game Spawned!");
         
         if (IsLocalPlayer)
-        {                        
+        {
             LocalGame.Instance.MyNetworkGameInstance = this;
+            NetworkManager.Singleton.OnConnectionEvent += HandleClientConnectionEvent;
+            if (IsServer)
+            {
+                NetworkManager.Singleton.OnServerStarted += HandleServerStart;
+                NetworkManager.Singleton.OnServerStopped += HandleServerStop;
+            }
+        }
+
+        if (IsServer)
+        {                                            
+            NetworkManager.Singleton.OnConnectionEvent += HandleServerConnectionEvent;            
         }
           
         // TODO: remove when player despawns
-        LocalGame.Instance.NetworkGameInstances.Add(this);                                  
+        LocalGame.Instance.NetworkGameInstances.Add(this);
+
+        // NetworkManager.Singleton.OnClientConnectedCallback += (ulong s) => {
+        //     Debug.Log("Client connected: " + s);
+        // };
+        // NetworkManager.Singleton.OnClientDisconnectCallback += (ulong s) => {
+        //     Debug.Log("Client disconnected: " + s);
+        // };
+        // NetworkManager.Singleton.OnClientStarted += () => {
+        //     Debug.Log("Client started");
+        // };
+        // NetworkManager.Singleton.OnClientStopped += (bool b) => {
+        //     Debug.Log("Client stopped");
+        // };
+        
+        // NetworkManager.Singleton.OnServerStarted += () => {
+        //     Debug.Log("server started!");
+        // };
+        
+        // NetworkManager.Singleton.OnTransportFailure += () => {
+        //     Debug.LogError("transport failure!");
+        // };                                  
     }
 
     public override void OnNetworkDespawn()
@@ -95,12 +141,114 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         Debug.Log($"[{NetworkObjectId}] Network Game Despawned!");
     }
 
+    void HandleClientConnectionEvent(NetworkManager m, ConnectionEventData c)
+    {
+        string output = $"[Handle Client Connection Event][{c.EventType}]: {c.ClientId}\nClient Ids:\n";
+        foreach(var p in c.PeerClientIds)
+        {
+            output += $"{p}\n";
+        }                
+        Debug.Log(output);
+
+        switch(c.EventType)
+        {
+            case ConnectionEvent.ClientDisconnected:
+            if (c.ClientId == m.LocalClientId)
+            {                                
+                NetworkManager.Singleton.OnConnectionEvent -= HandleClientConnectionEvent;
+                LocalGame.Instance.ChangeState(EGameState.START);
+            }
+            else
+            {
+                if (IsServer) break;
+
+                int connectedClientCount2 = 0;                
+                connectedClientCount2 = c.PeerClientIds.Length + 1;
+
+                Debug.Log($"Client remaining count: {connectedClientCount2}");
+
+                if (connectedClientCount2 < GameData.NUMBER_OF_PLAYERS)
+                {
+                    LocalGame.Instance.ChangeState(EGameState.WAITING);
+                }                                
+            } 
+            break;
+        }
+    }
+
+    void HandleServerConnectionEvent(NetworkManager m, ConnectionEventData c)
+    {
+        string output = $"[Handle Server Connection Event][{c.EventType}]: {c.ClientId}\nClient Ids:\n";
+        foreach(var p in c.PeerClientIds)
+        {
+            output += $"{p}\n";
+        }                
+        Debug.Log(output);        
+
+        switch(c.EventType)
+        {                 
+            case ConnectionEvent.ClientConnected:                                        
+            if (NetworkManager.Singleton.IsServer)
+            {                
+                if (!hasAssignedConnectionIndex)
+                {                                                            
+                    ConnectionIndex.Value = LocalGame.Instance.NetworkGameInstances.Count - 1;
+                    hasAssignedConnectionIndex = true;
+                }
+            }                       
+            break;
+            case ConnectionEvent.ClientDisconnected:            
+            if (c.ClientId == m.LocalClientId)
+            {                                
+                NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;
+                LocalGame.Instance.ChangeState(EGameState.START);
+            }
+            else
+            {                    
+                int connectedClientCount2 = 0;
+                foreach(var cID in NetworkManager.Singleton.ConnectedClientsIds)
+                {
+                    if (cID == c.ClientId) continue;
+                    connectedClientCount2++;
+                }
+
+                Debug.Log($"Client remaining count: {connectedClientCount2}");
+
+                if (connectedClientCount2 < GameData.NUMBER_OF_PLAYERS)
+                {
+                    LocalGame.Instance.ChangeState(EGameState.WAITING);
+                }
+            }
+            break;
+            case ConnectionEvent.PeerConnected:
+            break;
+            case ConnectionEvent.PeerDisconnected:
+            break;
+        }
+    }
+
+    void HandleServerStart()
+    {
+        Debug.Log($"server started");
+        LocalGame.Instance.ChangeState(EGameState.WAITING);
+    }
+
+    void HandleServerStop(bool b)
+    {
+        Debug.Log($"server stopped: {b}");                    
+        LocalGame.Instance.ChangeState(EGameState.START);
+        
+        NetworkManager.Singleton.OnServerStarted -= HandleServerStart;
+        NetworkManager.Singleton.OnServerStopped -= HandleServerStop;
+        NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;
+    }
+
     #region EVERYONE RPCS
     [Rpc(SendTo.Everyone)]
     public void RestartRpc()
     {
         LocalGame.Instance.ChangeState(EGameState.RESTART);
-        LocalGame.Instance.ChangeState(EGameState.PLAY);
+        LocalGame.Instance.ChangeState(EGameState.MULTIPLAYER_PLAY);
     }
     [Rpc(SendTo.Everyone)]
     private void DistributeMessageRpc(FixedString128Bytes message)
@@ -110,12 +258,6 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     #endregion 
     
     #region SERVER RPCs
-    [Rpc(SendTo.Server)]
-    public void SetConnectionIndexRpc(int connectionIndex)
-    {
-        ConnectionIndex.Value = connectionIndex;
-    }
-    
     // NOTE: Dangerous to allow any NetworkGame to Despawn unit, even if it is done on server side?
     [Rpc(SendTo.Server)]
     public void DespawnUnitRpc(int unitID)

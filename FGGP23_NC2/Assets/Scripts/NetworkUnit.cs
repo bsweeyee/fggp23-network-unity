@@ -56,7 +56,7 @@ public class NetworkUnit : NetworkBehaviour
             currentRenderer.enabled = true;        
         };
         OwnerConnectionIndexPlusOne.OnValueChanged += (int previousValue, int newValue) => {
-            if (LocalGame.Instance.LocalConnectionIndex == newValue - 1)
+            if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == newValue - 1)
             {
                 currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[0] } );            
             }
@@ -71,7 +71,7 @@ public class NetworkUnit : NetworkBehaviour
     {
         switch(LocalGame.Instance.CurrentState)
         {
-            case EGameState.PLAY:
+            case EGameState.MULTIPLAYER_PLAY:
             OnPlayStateLocalUpdate(Time.deltaTime);
             OnPlayServerUpdate(Time.deltaTime);
             break;
@@ -82,7 +82,7 @@ public class NetworkUnit : NetworkBehaviour
     {
         switch(LocalGame.Instance.CurrentState)
         {
-            case EGameState.PLAY:
+            case EGameState.MULTIPLAYER_PLAY:
             OnPlayFixedServerUpdate(Time.fixedDeltaTime);
             break;
         }
@@ -93,7 +93,7 @@ public class NetworkUnit : NetworkBehaviour
         switch(CurrentState.Value)
         {
             case ENetworkUnitState.MOVE:
-            if (LocalGame.Instance.LocalConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
+            if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {                
                 // we skip check if it is not the owner
                 targetUnitID = SelectAttackTarget();
@@ -105,7 +105,7 @@ public class NetworkUnit : NetworkBehaviour
 
             break;
             case ENetworkUnitState.ATTACK:
-            if (LocalGame.Instance.LocalConnectionIndex == (OwnerConnectionIndexPlusOne.Value - 1)) 
+            if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {
                 if (Time.time - client_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
                 {
@@ -185,7 +185,7 @@ public class NetworkUnit : NetworkBehaviour
         Collider[] ps = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.PlayerAttackableLayer);        
         Collider[] hs = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.UnitAttackRadius, LocalGame.Instance.GameData.UnitAttackableLayer);
         
-        Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.LocalConnectionIndex).ToArray();                   
+        Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value).ToArray();                   
         Collider[] notFriendlyPS = ps.Where(x => x.GetComponent<GameSpawnHitArea>().OwnerConnectionIndex != (OwnerConnectionIndexPlusOne.Value - 1)).ToArray();
 
         

@@ -17,7 +17,7 @@ namespace FGNetworkProgramming
         START,
         WAITING,
         RESTART,
-        PLAY,
+        MULTIPLAYER_PLAY,
         WIN,
         LOSE,
     }
@@ -56,9 +56,7 @@ namespace FGNetworkProgramming
         private LocalGameCamera mainCameraInstance;
         private GameView gameViewInstance;
         private GameObject backgroundInstance;
-        private int localConnectionIndex = -1;
         private List<GameSpawnHitArea> hitAreas; 
-
 
         Dictionary<int, NetworkUnit> networkUnitInstances;
         List<NetworkGame> networkGameInstances;
@@ -91,7 +89,6 @@ namespace FGNetworkProgramming
         {
             get { return networkUnitInstances; }
         }    
-        public int LocalConnectionIndex { get { return localConnectionIndex; } }
         public EGameState CurrentState { get { return currentGameState; } }
 
         public static LocalGame Instance 
@@ -138,32 +135,7 @@ namespace FGNetworkProgramming
                     }
                     break;
                 }
-            });
-
-            networkManagerInstance.OnClientConnectedCallback += (ulong s) => {
-                Debug.Log("Client connected: " + s);
-            };
-            networkManagerInstance.OnClientDisconnectCallback += (ulong s) => {
-                Debug.Log("Client disconnected: " + s);
-            };
-            networkManagerInstance.OnClientStarted += () => {
-                Debug.Log("Client started");
-            };
-            networkManagerInstance.OnClientStopped += (bool b) => {
-                Debug.Log("Client stopped");
-            };
-            
-            networkManagerInstance.OnConnectionEvent += HandleConnectionEvent;
-
-            networkManagerInstance.OnServerStarted += () => {
-                Debug.Log("server started!");
-            };
-            
-            networkManagerInstance.OnServerStopped += HandleServerStop;
-
-            networkManagerInstance.OnTransportFailure += () => {
-                Debug.LogError("transport failure!");
-            };
+            });            
 
             ChangeState(EGameState.START);
         }
@@ -197,6 +169,8 @@ namespace FGNetworkProgramming
                 using (new GUILayout.HorizontalScope())
                 {
                     GUILayout.TextArea("Client ID: " + NetworkManager.Singleton.LocalClientId.ToString());
+                    int localConnectionIndex = -1 ;
+                    if (MyNetworkGameInstance != null) localConnectionIndex = MyNetworkGameInstance.ConnectionIndex.Value;
                     GUILayout.TextArea("Connection index: " + localConnectionIndex.ToString());
                 }
                 if (GUILayout.Button("Reset"))
@@ -285,88 +259,7 @@ namespace FGNetworkProgramming
             logQueue.Enqueue("[" + type + "] : " + logString);
             if (type == LogType.Exception) logQueue.Enqueue(stackTrace);            
             while (logQueue.Count > 5) logQueue.Dequeue();
-        }         
-
-        void HandleConnectionEvent(NetworkManager m, ConnectionEventData c)
-        {
-            string output = $"[{c.EventType}]: {c.ClientId}\nClient Ids:\n";
-            foreach(var p in c.PeerClientIds)
-            {
-                output += $"{p}\n";
-            }                
-            Debug.Log(output);
-
-            switch(c.EventType)
-            {                 
-                case ConnectionEvent.ClientConnected:
-                if (c.ClientId == m.LocalClientId)
-                {
-                    localConnectionIndex = c.PeerClientIds.Length;
-                    MyNetworkGameInstance.SetConnectionIndexRpc(localConnectionIndex);                                                                
-                }
-                                
-                var connectedClientCount = 0;
-                if (NetworkManager.Singleton.IsServer)
-                {
-                    connectedClientCount = NetworkManager.Singleton.ConnectedClientsList.Count;                    
-                }
-                else
-                {
-                    connectedClientCount = c.PeerClientIds.Length + 1;
-                }
-                
-                if (connectedClientCount >= GameData.NUMBER_OF_PLAYERS)
-                {
-                    ChangeState(EGameState.PLAY);
-                }
-                else
-                {
-                    ChangeState(EGameState.WAITING);                
-                }   
-                break;
-                case ConnectionEvent.ClientDisconnected:
-                if (c.ClientId == m.LocalClientId)
-                {                                                                                    
-                    localConnectionIndex = -1;
-                    ChangeState(EGameState.START);
-                }
-                else
-                {                    
-                    int connectedClientCount2 = 0;
-                    if (NetworkManager.Singleton.IsServer)
-                    {                                               
-                        foreach(var cID in NetworkManager.Singleton.ConnectedClientsIds)
-                        {
-                            if (cID == c.ClientId) continue;
-                            connectedClientCount2++;
-                        }
-                    }
-                    else
-                    {
-                        connectedClientCount2 = c.PeerClientIds.Length + 1;
-                    }
-
-                    Debug.Log($"Client remaining count: {connectedClientCount2}");
-
-                    if (connectedClientCount2 < GameData.NUMBER_OF_PLAYERS)
-                    {
-                        ChangeState(EGameState.WAITING);
-                    }
-                }
-                break;
-                case ConnectionEvent.PeerConnected:
-                break;
-                case ConnectionEvent.PeerDisconnected:
-                break;
-            }
-        }
-
-        void HandleServerStop(bool b)
-        {
-            Debug.Log($"server stopped: {b}");
-            localConnectionIndex = -1;            
-            ChangeState(EGameState.START);
-        }
+        }                
         
         void ClearNetworkUnits()
         {
@@ -438,7 +331,7 @@ namespace FGNetworkProgramming
                 }
                 break;
 
-                case EGameState.PLAY:
+                case EGameState.MULTIPLAYER_PLAY:
                 backgroundInstance = Instantiate(gameData.BackgroundPrefab);
 
                 // spawn hit areas
@@ -452,7 +345,7 @@ namespace FGNetworkProgramming
                 var playStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStatePlay>();
                 foreach(var ni in playStateInterfaces)
                 {
-                    ni.OnGameStatePlay(myNetworkGameInstance, localConnectionIndex);
+                    ni.OnGameStatePlay(myNetworkGameInstance, myNetworkGameInstance.ConnectionIndex.Value);
                 }
                 break;
 

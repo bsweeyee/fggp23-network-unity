@@ -7,6 +7,13 @@ using System.Linq;
 using System;
 using Unity.Collections;
 
+/// <summary>
+/// THIS IS NOW OBSOLETE, DO NOT USE
+/// Unit Data is a struct container that tracks a unit's variable states instead of storing it in a C# script
+/// However, this turns out to not be useful and may cost more network bandwidth because updating data requires sending the entire struct
+/// Shifted back to using NetworkVariables
+/// </summary>
+[Obsolete]
 [Serializable]
 public struct UnitData : INetworkSerializable, System.IEquatable<UnitData>
 {
@@ -43,6 +50,10 @@ public struct UnitData : INetworkSerializable, System.IEquatable<UnitData>
     {
         return other.Equals(this);
     }
+}
+
+public interface IOnMessageReceived {
+    void OnMessageReceieved(string message, int ownerconnectionIndex);
 }
 
 /// <summary>
@@ -251,8 +262,13 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         LocalGame.Instance.ChangeState(EGameState.MULTIPLAYER_PLAY);
     }
     [Rpc(SendTo.Everyone)]
-    private void DistributeMessageRpc(FixedString128Bytes message)
-    {
+    private void DistributeMessageRpc(FixedString128Bytes message, int senderConnectionIndex)
+    {        
+        var receivedMessageInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnMessageReceived>().ToArray();
+        foreach(var rmi in receivedMessageInterfaces)
+        {
+            rmi.OnMessageReceieved(message.ToString(), senderConnectionIndex);
+        }
         Debug.Log($"message received: {message}");
     }
     #endregion 
@@ -295,10 +311,10 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     }
 
     [Rpc(SendTo.Server)]
-    public void SendMessageRpc(FixedString128Bytes message)
+    public void SendMessageRpc(FixedString128Bytes message, int senderConnectionIndex)
     {
         // TODO: validate if message is safe
-        DistributeMessageRpc(message);
+        DistributeMessageRpc(message, senderConnectionIndex);
     }
     #endregion
     

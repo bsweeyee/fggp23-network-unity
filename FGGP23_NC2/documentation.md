@@ -14,7 +14,7 @@ The game should support at least two players (one host and one client).
 4. Implement in game communication (e.g., chat messages, emotes).
 5. Implement server authority to handle game state and synchronization.
 
-# Design
+# DESIGN
 Single lane PVP Unit defense. --> CLEAR #1
 Objective: 
 - Spawn enough units and get to the other side of the lane and win game
@@ -37,7 +37,7 @@ Objective:
     - Select a list of words
     - Tap word popup and sync message
 
-# TODO
+# FEATURES
 [o] Display Debug Logs on game builds ( to check for error in network ids etc.)
 [o] Spawn Network Objects in their correct respective positions
     - OwnerClientId is probably always the same ( Belongs to Server in a Server authoritative system ). To get the id of the Client who RPC-ed, we need to send that information in the RPC itself
@@ -53,8 +53,7 @@ Objective:
 [ ] Prevent spawning if there is already a friendly unit at the start -> if implement merging, instantly merge
 [ ] Implement units merging
 
-# Documentation
-
+# TIME LOG
 ## 06/08/2024
 - Add spawning of NetworkGame -> NetworkGame will store the state of the Game 
 - Add spawning of NetworkUnit
@@ -82,4 +81,31 @@ Why this is important is because I used the default spawned player object to han
 TODO:
 [o] Finish Game State handling
 [o] Fix bug with player attacking
-[ ] Handle game end loop
+[o] Handle game end loop
+
+## 11/06/2024
+TODO:
+[o] Handle game end loop
+[o] Added emote sending
+
+## 12/06/2024
+TODO:
+[ ] Emote feedback
+[ ] Upgrade to use Unity Input system ( 2nd method )
+[ ] Add multiple lanes
+[ ] Select a unit and change lanes
+
+# CODE STRUCTURE
+- LocalGame
+- NetworkGame
+    - This is my IsLocalPlayer object. I use this script as the primary point to handle most server functionalities that require "general" functionalities. Eg. Spawning, despawning
+- NetworkUnit
+
+# LEARNINGS
+## Handling state synchronization that requires Time
+
+## Handling transform.position synchronization
+
+## Assign your own unique identifier/index because NetworkManager.Singleton.LocalClientID is forever increasing
+
+- Using this value to move game state into PLAY state

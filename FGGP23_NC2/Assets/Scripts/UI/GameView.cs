@@ -10,29 +10,32 @@ using UnityEngine.InputSystem.UI;
 using System.ComponentModel;
 using System;
 
-public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose
+public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, IOnMessageReceived
 {       
     [SerializeField] private Button spawnUnit;
     [SerializeField] private TMP_InputField customMessageInput;
     [SerializeField] private Button openMessageButton;
 
-    private Canvas canvas;
-    private Canvas messageViewCanvas;
+    private Canvas gameViewCanvasInstance;
+    private Canvas messageViewCanvasInstance;
+    private Dictionary<int, Canvas> replyViewCanvasInstances;
     private EventSystem eventSystem;
 
     private List<Button> messageButtons;
     public void Initialize(LocalGame localGame, Camera worldCamera)
     {
-        canvas = GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = worldCamera;
-        canvas.planeDistance = 1;
+        // Initialize game view canvas
+        gameViewCanvasInstance = GetComponent<Canvas>();
+        gameViewCanvasInstance.renderMode = RenderMode.ScreenSpaceCamera;
+        gameViewCanvasInstance.worldCamera = worldCamera;
+        gameViewCanvasInstance.planeDistance = 1;
 
         var es = new GameObject("EventSystem");
         
         eventSystem = es.AddComponent<EventSystem>();
         es.AddComponent<InputSystemUIInputModule>();
 
+        // Initialize custom message Input field
         if (customMessageInput != null)
         {
             int limit = 128 / sizeof(char);
@@ -40,16 +43,18 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
             customMessageInput.gameObject.SetActive(false);                            
         }
 
-        messageViewCanvas = Instantiate(localGame.GameData.MessageView);
-        messageViewCanvas.renderMode = RenderMode.WorldSpace;
-        messageViewCanvas.worldCamera = worldCamera;
-        messageViewCanvas.gameObject.SetActive(false);
+        // Initialize message view
+        messageViewCanvasInstance = Instantiate(localGame.GameData.MessageView);
+        messageViewCanvasInstance.renderMode = RenderMode.WorldSpace;
+        messageViewCanvasInstance.worldCamera = worldCamera;
+        messageViewCanvasInstance.gameObject.SetActive(false);
 
+        // Initialize buttons
         messageButtons = new List<Button>();
 
-        for(int i=0; i < messageViewCanvas.transform.childCount; i++)
+        for(int i=0; i < messageViewCanvasInstance.transform.childCount; i++)
         {
-            var button = messageViewCanvas.transform.GetChild(i).GetComponent<Button>();                        
+            var button = messageViewCanvasInstance.transform.GetChild(i).GetComponent<Button>();                        
             messageButtons.Add(button);
         }
 
@@ -59,11 +64,14 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         });
 
         openMessageButton.onClick.AddListener(() => {
-            messageViewCanvas.gameObject.SetActive(true);
+            messageViewCanvasInstance.gameObject.SetActive(true);
             customMessageInput.gameObject.SetActive(true);                                    
             openMessageButton.gameObject.SetActive(false);
             FGNetworkProgramming.Input.Instance.OnHandleMouseInput.AddListener(HandleMouseInput);
         });                
+    
+        // Initialize reply view
+        replyViewCanvasInstances = new Dictionary<int, Canvas>();
     }
 
     void HandleMouseInput(Vector2 position, EGameInput input, EInputState state)
@@ -71,7 +79,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         if (input == EGameInput.LEFT_MOUSE_BUTTON && state == EInputState.PRESSED)
         {
             FGNetworkProgramming.Input.Instance.OnHandleMouseInput.RemoveListener(HandleMouseInput);
-            messageViewCanvas.gameObject.SetActive(false);
+            messageViewCanvasInstance.gameObject.SetActive(false);
             customMessageInput.gameObject.SetActive(false);                                    
             openMessageButton.gameObject.SetActive(true);
 
@@ -85,30 +93,50 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     {
         gameObject.SetActive(true);
         spawnUnit.onClick.RemoveAllListeners();
-        spawnUnit.onClick.AddListener(() => {
-            // TODO: Figure out a way to abstract the need to reference networkGame from View
-            networkGame.SpawnUnitRpc(LocalGame.Instance.LocalConnectionIndex);
+        spawnUnit.onClick.AddListener(() => {            
+            networkGame.SpawnUnitRpc(LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value);
         });
 
-        messageViewCanvas.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[clientID];
-        messageViewCanvas.transform.rotation = LocalGame.Instance.GameData.CameraRotation[clientID];
+        // reposition MessageViewCanvas to face the camera and also closer to camera view plane
+        messageViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[clientID];
+        messageViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[clientID];
 
         Vector3 d = LocalGame.Instance.GameData.CameraSpawnPosition[clientID] - LocalGame.Instance.GameData.UnitSpawnPosition[clientID];
-        Vector3 projectedD = Vector3.Dot(d, -messageViewCanvas.transform.forward) * -messageViewCanvas.transform.forward;
+        Vector3 projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                 
-        messageViewCanvas.transform.position += (projectedD * 0.9f);
+        messageViewCanvasInstance.transform.position += (projectedD * 0.9f);
 
+        // reposition ReplyViewCanvases to face the camera and also closer to camera view plane
+        foreach(var ng in LocalGame.Instance.NetworkGameInstances)
+        {
+            var replyViewCanvasInstance = Instantiate(LocalGame.Instance.GameData.ReplyView);
+            replyViewCanvasInstance.renderMode = RenderMode.WorldSpace;
+            replyViewCanvasInstance.worldCamera = LocalGame.Instance.MainCamera.GameCamera;
+            replyViewCanvasInstance.gameObject.SetActive(false);
+
+            replyViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[ng.ConnectionIndex.Value];
+            replyViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];
+            
+            d = LocalGame.Instance.GameData.CameraSpawnPosition[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value] - LocalGame.Instance.GameData.UnitSpawnPosition[ng.ConnectionIndex.Value];
+            projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
+                    
+            replyViewCanvasInstance.transform.position += (projectedD * 0.9f);
+
+            replyViewCanvasInstances.Add(ng.ConnectionIndex.Value, replyViewCanvasInstance);
+        }        
+
+        // initialize message buttons
         for (int i=0; i<messageButtons.Count; i++)
         {
             var button = messageButtons[i];
-            if (i == messageViewCanvas.transform.childCount - 1)
+            if (i == messageViewCanvasInstance.transform.childCount - 1)
             {
                 button.onClick.AddListener(() => {
                     if (!String.IsNullOrEmpty(customMessageInput.text))
                     {
-                        networkGame.SendMessageRpc(customMessageInput.text);
+                        networkGame.SendMessageRpc(customMessageInput.text, LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value);
                     }
-                    messageViewCanvas.gameObject.SetActive(false);
+                    messageViewCanvasInstance.gameObject.SetActive(false);
                     customMessageInput.gameObject.SetActive(false);                                    
                     openMessageButton.gameObject.SetActive(true);
                 });
@@ -117,8 +145,8 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
             {
                 string m = LocalGame.Instance.GameData.Messages[i];
                 button.onClick.AddListener(() => {                    
-                    networkGame.SendMessageRpc(m);
-                    messageViewCanvas.gameObject.SetActive(false);
+                    networkGame.SendMessageRpc(m, LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value);
+                    messageViewCanvasInstance.gameObject.SetActive(false);
                     customMessageInput.gameObject.SetActive(false);                                    
                     openMessageButton.gameObject.SetActive(true);                                        
                 });
@@ -132,7 +160,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     public void OnGameStateStart(LocalGame game)
     {
         gameObject.SetActive(false);
-        messageViewCanvas.gameObject.SetActive(false);
+        messageViewCanvasInstance.gameObject.SetActive(false);
         for (int i=0; i<messageButtons.Count; i++)
         {
             messageButtons[i].onClick.RemoveAllListeners();
@@ -142,7 +170,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
     {
         gameObject.SetActive(false);
-        messageViewCanvas.gameObject.SetActive(false);
+        messageViewCanvasInstance.gameObject.SetActive(false);
         for (int i=0; i<messageButtons.Count; i++)
         {
             messageButtons[i].onClick.RemoveAllListeners();
@@ -152,7 +180,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
     {
         gameObject.SetActive(false);
-        messageViewCanvas.gameObject.SetActive(false);
+        messageViewCanvasInstance.gameObject.SetActive(false);
         for (int i=0; i<messageButtons.Count; i++)
         {
             messageButtons[i].onClick.RemoveAllListeners();
@@ -162,10 +190,18 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
     {
         gameObject.SetActive(false);
-        messageViewCanvas.gameObject.SetActive(false);
+        messageViewCanvasInstance.gameObject.SetActive(false);
         for (int i=0; i<messageButtons.Count; i++)
         {
             messageButtons[i].onClick.RemoveAllListeners();
         }
+    }
+
+    public void OnMessageReceieved(string message, int ownerconnectionIndex)
+    {
+        // TODO: add to queue and buffer it instead
+        replyViewCanvasInstances[ownerconnectionIndex].gameObject.SetActive(true);
+        var tmp = replyViewCanvasInstances[ownerconnectionIndex].gameObject.GetComponentInChildren<TextMeshProUGUI>();
+        tmp.text = message;
     }
 }

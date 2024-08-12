@@ -162,7 +162,13 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         if (LocalGame.Instance.NetworkGameInstances.Contains(this))
         {
             LocalGame.Instance.NetworkGameInstances.Remove(this);
-        }        
+        }
+
+        // we need to remove the copy of HandleServerConnectionEvent delegate from the host / server side
+        if (IsServer)
+        {
+            NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;        
+        }
 
         Debug.Log($"[{NetworkObjectId}] Network Game Despawned!");
     }
@@ -204,7 +210,7 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
 
     void HandleServerConnectionEvent(NetworkManager m, ConnectionEventData c)
     {
-        string output = $"[Handle Server Connection Event][{c.EventType}]: {c.ClientId}\nClient Ids:\n";
+        string output = $"[{ConnectionIndex.Value}: Handle Server Connection Event][{c.EventType}]: {c.ClientId}\nClient Ids:\n";
         foreach(var p in c.PeerClientIds)
         {
             output += $"{p}\n";
@@ -224,26 +230,31 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
             }                       
             break;
             case ConnectionEvent.ClientDisconnected:            
+            // code here is to account for the client-side players                            
             if (c.ClientId == m.LocalClientId)
-            {                                
+            {    
                 NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;
                 LocalGame.Instance.ChangeState(EGameState.START);
             }
             else
-            {                    
-                int connectedClientCount2 = 0;
-                foreach(var cID in NetworkManager.Singleton.ConnectedClientsIds)
+            {       
+                // code here is to account for other connected players         
+                if (IsLocalPlayer)
                 {
-                    if (cID == c.ClientId) continue;
-                    connectedClientCount2++;
-                }
+                    int connectedClientCount2 = 0;
+                    foreach(var cID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (cID == c.ClientId) continue;
+                        connectedClientCount2++;
+                    }
 
-                Debug.Log($"Client remaining count: {connectedClientCount2}");
+                    Debug.Log($"Client remaining count: {connectedClientCount2}");
 
-                if (connectedClientCount2 < GameData.NUMBER_OF_PLAYERS)
-                {
-                    LocalGame.Instance.ChangeState(EGameState.WAITING);
-                }
+                    if (connectedClientCount2 < GameData.NUMBER_OF_PLAYERS)
+                    {
+                        LocalGame.Instance.ChangeState(EGameState.WAITING);
+                    }
+                }                                                
             }
             break;
             case ConnectionEvent.PeerConnected:

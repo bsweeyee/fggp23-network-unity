@@ -32,7 +32,7 @@ namespace FGNetworkProgramming
             }
             if (bIsDisplaySpawnPosition)
             {
-                for (int i=0; i< GameData.NUMBER_OF_PLAYERS; i++)
+                for (int i=0; i< lg.GameData.UnitSpawnPosition.Count; i++)
                 {
                     using (new EditorGUILayout.HorizontalScope())
                     {                                        
@@ -175,12 +175,19 @@ namespace FGNetworkProgramming
             Handles.color = Color.red;
             Gizmos.color = Color.red;
 
+            var labelStyle = new GUIStyle();
+            labelStyle.fontSize = 32;
+            labelStyle.fontStyle = FontStyle.Bold;            
+
             if (!Application.isPlaying)
             {
                 if (bIsDisplaySpawnPosition)
                 {
-                    for (int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)
+                    var oldColor = GUI.color;
+                    GUI.color = Color.black;
+                    for (int i=0; i<lg.GameData.UnitSpawnPosition.Count; i++)
                     {
+                        Handles.Label(lg.GameData.UnitSpawnPosition[i], i.ToString(), labelStyle);
                         Vector3 newPos = Handles.PositionHandle(lg.GameData.UnitSpawnPosition[i], Quaternion.identity);
                         if (newPos != lg.GameData.UnitSpawnPosition[i])
                         {
@@ -188,6 +195,7 @@ namespace FGNetworkProgramming
                             Repaint();
                         }                    
                     }
+                    GUI.color = oldColor;
                 }
 
                 if (bIsDisplayCameraPosition)

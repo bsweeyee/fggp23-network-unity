@@ -329,23 +329,30 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     }
 
     [Rpc(SendTo.Server)]
-    public void SpawnUnitRpc(int connectionIndex)
+    public void SpawnUnitRpc(int connectionIndex, int spawnIndex)
     {
         // TODO: do some sanity check here to see if player can spawn unit
         NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit);        
         ob.GetComponent<NetworkObject>().Spawn();
 
-        var targetID = UnityEngine.Random.Range(0, LocalGame.Instance.GameData.UnitSpawnPosition.Count);
-        if (targetID == connectionIndex)
+
+        int interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);        
+        // var offset = UnityEngine.Random.Range(0, interval);
+        var targetConnectionIndex = UnityEngine.Random.Range(0, GameData.NUMBER_OF_PLAYERS);
+        if (targetConnectionIndex == connectionIndex)
         {
-            targetID = (targetID+1) % LocalGame.Instance.GameData.UnitSpawnPosition.Count;
+            targetConnectionIndex += 1;
+            targetConnectionIndex %= GameData.NUMBER_OF_PLAYERS;
         }
+        
+        int toTargetIndex = interval * targetConnectionIndex + spawnIndex;
+        int toSpawnIdx = interval * connectionIndex + spawnIndex;                
 
         ob.UnitID.Value = System.Guid.NewGuid().GetHashCode(); 
         ob.OwnerConnectionIndexPlusOne.Value = connectionIndex + 1;
-        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[connectionIndex];                         
+        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[toSpawnIdx];                         
         
-        ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[targetID];
+        ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[toTargetIndex];
         ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;                
         ob.ChangeState(ENetworkUnitState.MOVE);
     }

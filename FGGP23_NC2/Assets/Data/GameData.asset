@@ -35,9 +35,17 @@ MonoBehaviour:
   cameraNonNetworkSpawnPosition: {x: 4.5, y: 4, z: -5.5}
   cameraNonNetworkRotation: {x: -0.24321035, y: 0.33036616, z: -0.08852134, w: -0.90767336}
   unitSpawnPosition:
+  - {x: -4, y: 0, z: -4}
   - {x: 0, y: 0, z: -4}
+  - {x: 4, y: 0, z: -4}
+  - {x: -4, y: 0, z: 4}
   - {x: 0, y: 0, z: 4}
+  - {x: 4, y: 0, z: 4}
   unitSpawnRadius:
+  - 1
+  - 1
+  - 1
+  - 1
   - 1
   - 1
   cameraSpawnPosition:

@@ -83,18 +83,21 @@ TODO:
 [o] Fix bug with player attacking
 [o] Handle game end loop
 
-## 11/06/2024
+## 11/08/2024
 TODO:
 [o] Handle game end loop
 [o] Added emote sending
 
-## 12/06/2024
+## 12/08/2024
 TODO:
 [o] Refactored Connection Index such that it should no longer have desync
-[?] Emote feedback
+[o] Emote feedback
 [ ] Upgrade to use Unity Input system ( 2nd method )
 [ ] Add multiple lanes
-[ ] Select a unit and change lanes
+[ ] Select a unit and change lanes?
+
+## 13/08/2024
+
 
 # CODE STRUCTURE
 - LocalGame

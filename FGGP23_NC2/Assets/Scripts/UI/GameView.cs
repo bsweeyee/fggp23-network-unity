@@ -9,10 +9,11 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using System.ComponentModel;
 using System;
+using Unity.VisualScripting;
 
 public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, IOnMessageReceived
 {       
-    [SerializeField] private Button spawnUnit;
+    [SerializeField] private List<Button> spawnUnitButtons;
     [SerializeField] private TMP_InputField customMessageInput;
     [SerializeField] private Button openMessageButton;
 
@@ -170,13 +171,27 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         }
     }
 
-    public void OnGameStatePlay(NetworkGame networkGame, int clientID)
+    void OnSpawnUnit(NetworkGame networkGame, int spawnIndex)
     {
-        gameObject.SetActive(true);
-        spawnUnit.onClick.RemoveAllListeners();
-        spawnUnit.onClick.AddListener(() => {            
-            networkGame.SpawnUnitRpc(LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value);
-        });
+        networkGame.SpawnUnitRpc(LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value, spawnIndex);
+    }
+
+    public void OnGameStatePlay(NetworkGame networkGame, int clientID)
+    {              
+        gameObject.SetActive(true);        
+        int[] indices = new int[spawnUnitButtons.Count];
+        for(int i=0; i<indices.Length; i++) indices[i] = i;
+
+        for(int i=0; i<spawnUnitButtons.Count; i++)
+        {   
+            int index = indices[i];         
+            spawnUnitButtons[i].onClick.RemoveAllListeners();
+            spawnUnitButtons[i].onClick.AddListener(() => {
+                var x = index;
+                if (clientID%2 != 0) x = indices.Length - index - 1;                 
+                OnSpawnUnit(networkGame, x);
+            });
+        }
 
         // reposition MessageViewCanvas to face the camera and also closer to camera view plane
         messageViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[clientID];

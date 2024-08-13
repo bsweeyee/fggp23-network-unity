@@ -18,6 +18,21 @@ public enum ENetworkUnitState
     DEAD
 }
 
+public interface INetworkUnitHealth
+{
+    void OnHealthChange(int unitID, float oldValue, float newValue);
+}
+
+public interface INetworkUnitSpawn
+{
+    void OnNetworkUnitIDUpdate(NetworkUnit unit);
+}
+
+public interface INetworkUnitDespawn
+{
+    void OnNetworkUnitDespawn(NetworkUnit unit);
+}
+
 [RequireComponent(typeof(NetworkObject), typeof(NetworkTransform))]
 public class NetworkUnit : NetworkBehaviour
 {
@@ -39,6 +54,7 @@ public class NetworkUnit : NetworkBehaviour
 
     int targetUnitID = int.MaxValue;
 
+    public MeshRenderer CurrentMeshRenderer { get { return currentRenderer; } }
 
     private void OnEnable()
     {
@@ -53,7 +69,13 @@ public class NetworkUnit : NetworkBehaviour
         UnitID.OnValueChanged += (int previousValue, int newValue) => {
             LocalGame.Instance.NetworkUnitInstances.Add(newValue, this);            
             currentCollider.enabled = true;
-            currentRenderer.enabled = true;        
+            currentRenderer.enabled = true;
+
+            var networkUnitSpawnInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitSpawn>();
+            foreach(var nii in networkUnitSpawnInterfaces)
+            {
+                nii.OnNetworkUnitIDUpdate(this);
+            }        
         };
         OwnerConnectionIndexPlusOne.OnValueChanged += (int previousValue, int newValue) => {
             if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == newValue - 1)
@@ -63,6 +85,13 @@ public class NetworkUnit : NetworkBehaviour
             else
             {
                 currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[1] } );
+            }            
+        };
+        Health.OnValueChanged += (float previousValue, float newValue) => {
+            var networkUnitHealthInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitHealth>();
+            foreach(var nhi in networkUnitHealthInterfaces)
+            {
+                nhi.OnHealthChange(UnitID.Value, previousValue, newValue);
             }
         };        
     }
@@ -187,8 +216,7 @@ public class NetworkUnit : NetworkBehaviour
         
         Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value).ToArray();                   
         Collider[] notFriendlyPS = ps.Where(x => x.GetComponent<GameSpawnHitArea>().OwnerConnectionIndex != (OwnerConnectionIndexPlusOne.Value - 1)).ToArray();
-
-        
+       
         if (notOwnerHS.Length > 0)
         {
             int idx = UnityEngine.Random.Range(0, notOwnerHS.Length);
@@ -227,6 +255,11 @@ public class NetworkUnit : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
+        var networkDespawnInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitDespawn>();
+        foreach(var nii in networkDespawnInterfaces)
+        {
+            nii.OnNetworkUnitDespawn(this);
+        } 
         LocalGame.Instance.NetworkUnitInstances.Remove(UnitID.Value);
     }
     #endregion

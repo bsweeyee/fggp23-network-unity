@@ -54,9 +54,11 @@ namespace FGNetworkProgramming
 
         [Header("UI Prefabs")]
         [SerializeField] private GameView gameView;
+        [SerializeField] private UnitStatView unitStatView;
         [SerializeField] private Canvas messageView;
         [SerializeField] private Canvas replyView;
         public GameView GameView { get { return gameView; }}
+        public UnitStatView UnitStatView { get { return unitStatView; } }
         public Canvas MessageView { get { return messageView; } }
         public Canvas ReplyView { get { return replyView; } }
         #endregion

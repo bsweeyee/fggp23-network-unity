@@ -11,7 +11,9 @@ using System.ComponentModel;
 using System;
 using Unity.VisualScripting;
 
-public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, IOnMessageReceived
+public class GameView : MonoBehaviour, 
+                        IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, 
+                        IOnMessageReceived, INetworkUnitSpawn, INetworkUnitDespawn
 {       
     [SerializeField] private List<Button> spawnUnitButtons;
     [SerializeField] private TMP_InputField customMessageInput;
@@ -20,6 +22,7 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
     private Canvas gameViewCanvasInstance;
     private Canvas messageViewCanvasInstance;
     private Dictionary<int, Canvas> replyViewCanvasInstances;
+    private Dictionary<int, UnitStatView> unitStateViewInstances;
     private EventSystem eventSystem;
 
     private List<Button> messageButtons; // NOTE: Last button is always the custom message button
@@ -104,6 +107,9 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
 
             replyViewCanvasInstances.Add(i, replyViewCanvasInstance);
         }
+
+        // Initialize Unit State view
+        unitStateViewInstances = new Dictionary<int, UnitStatView>();
     }
     
     private void Update()
@@ -349,5 +355,25 @@ public class GameView : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnG
         {
             lastReplyCanvasDisplayTime.Add(ownerconnectionIndex, Time.time);
         }
+    }
+
+    public void OnNetworkUnitIDUpdate(NetworkUnit unit)
+    {
+        var nuStateView = Instantiate(LocalGame.Instance.GameData.UnitStatView, unit.transform);
+        nuStateView.Initialize(this, unit.UnitID.Value);
+        unitStateViewInstances.Add(unit.UnitID.Value, nuStateView);
+        
+        nuStateView.transform.localPosition = Vector3.zero;
+        var offset = nuStateView.GetComponent<RectTransform>().rect.height * nuStateView.transform.localScale.y;
+        nuStateView.transform.position += Vector3.up * (unit.CurrentMeshRenderer.bounds.extents.y + offset);        
+
+        nuStateView.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];        
+    }    
+
+    public void OnNetworkUnitDespawn(NetworkUnit unit)
+    {        
+        var nuStateView = unitStateViewInstances[unit.UnitID.Value];
+        Destroy(nuStateView.gameObject);
+        unitStateViewInstances.Remove(unit.UnitID.Value);                
     }
 }

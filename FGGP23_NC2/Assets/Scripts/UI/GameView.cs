@@ -4,29 +4,38 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FGNetworkProgramming;
-using Unity.Netcode;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
-using System.ComponentModel;
 using System;
-using Unity.VisualScripting;
 
 public class GameView : MonoBehaviour, 
                         IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, 
-                        IOnMessageReceived, INetworkUnitSpawn, INetworkUnitDespawn
+                        IOnMessageReceived, INetworkUnitSpawn, INetworkUnitDespawn,
+                        IOnGameHealthChange
 {       
+    /// <summary>
+    /// Assigned GameObjects in Editor
+    /// </summary>
     [SerializeField] private List<Button> spawnUnitButtons;
     [SerializeField] private TMP_InputField customMessageInput;
     [SerializeField] private Button openMessageButton;
+    [SerializeField] private Image healthAmountFill;
 
+    /// <summary>
+    /// Spawned game instances
+    /// </summary>
     private Canvas gameViewCanvasInstance;
     private Canvas messageViewCanvasInstance;
     private Dictionary<int, Canvas> replyViewCanvasInstances;
-    private Dictionary<int, UnitStatView> unitStateViewInstances;
+    private Dictionary<int, UnitStatView> unitStatViewInstances;
+    private Dictionary<int, PlayerStatView> playerStatViewInstances;
     private EventSystem eventSystem;
 
     private List<Button> messageButtons; // NOTE: Last button is always the custom message button
 
+    /// <summary>
+    /// Temporary time states
+    /// </summary>
     private Dictionary<int, float> lastReplyCanvasDisplayTime;
     private float lastMessageSendTime = -1;
     private float lastSpawnRequestSendTime = -1;
@@ -110,7 +119,16 @@ public class GameView : MonoBehaviour,
         }
 
         // Initialize Unit State view
-        unitStateViewInstances = new Dictionary<int, UnitStatView>();
+        unitStatViewInstances = new Dictionary<int, UnitStatView>();
+
+        // Initialize player state view
+        playerStatViewInstances = new Dictionary<int, PlayerStatView>();
+        for(int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)
+        {
+            var playerStatViewInstance = Instantiate(LocalGame.Instance.GameData.PlayerStatView);
+            playerStatViewInstance.Initialize(this);
+            playerStatViewInstances.Add(i, playerStatViewInstance);
+        }                
     }
     
     private void Update()
@@ -245,7 +263,24 @@ public class GameView : MonoBehaviour,
             projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                     
             replyViewCanvasInstance.transform.position += (projectedD * 0.9f);
-        }        
+        }   
+
+        // reposition player stat view to their respective position
+        for (int i=0; i<LocalGame.Instance.NetworkGameInstances.Count; i++)
+        {
+            var ng = LocalGame.Instance.NetworkGameInstances[i];
+            
+            var playerStatCanvasInstance = playerStatViewInstances[i];            
+            playerStatCanvasInstance.transform.position = LocalGame.Instance.GameData.PlayerSpawnPosition[ng.ConnectionIndex.Value];
+            playerStatCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];
+            
+            d = LocalGame.Instance.GameData.CameraSpawnPosition[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value] - LocalGame.Instance.GameData.PlayerSpawnPosition[ng.ConnectionIndex.Value];
+            projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
+                    
+            playerStatCanvasInstance.transform.position += (projectedD * 0.9f);
+
+            playerStatCanvasInstance.EnterGamePlayState(ng.ConnectionIndex.Value);
+        }     
 
         // initialize message buttons
         for (int i=0; i<messageButtons.Count; i++)
@@ -315,6 +350,11 @@ public class GameView : MonoBehaviour,
 
         lastMessageSendTime = -1;
         lastReplyCanvasDisplayTime.Clear();
+
+        foreach(var playerHealthInstances in playerStatViewInstances)
+        {
+            playerHealthInstances.Value.ExitGamePlayState();
+        }
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
@@ -328,6 +368,11 @@ public class GameView : MonoBehaviour,
 
         lastMessageSendTime = -1;
         lastReplyCanvasDisplayTime.Clear();
+
+        foreach(var playerHealthInstances in playerStatViewInstances)
+        {
+            playerHealthInstances.Value.ExitGamePlayState();
+        }
     }
 
     public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -346,6 +391,11 @@ public class GameView : MonoBehaviour,
 
         lastMessageSendTime = -1;
         lastReplyCanvasDisplayTime.Clear();
+
+        foreach(var playerHealthInstances in playerStatViewInstances)
+        {
+            playerHealthInstances.Value.ExitGamePlayState();
+        }
     }
 
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -365,6 +415,11 @@ public class GameView : MonoBehaviour,
 
         lastMessageSendTime = -1;
         lastReplyCanvasDisplayTime.Clear();
+
+        foreach(var playerHealthInstances in playerStatViewInstances)
+        {
+            playerHealthInstances.Value.ExitGamePlayState();
+        }
     }
 
     public void OnMessageReceieved(string message, int ownerconnectionIndex)
@@ -382,23 +437,49 @@ public class GameView : MonoBehaviour,
         }
     }
 
-    public void OnNetworkUnitIDUpdate(NetworkUnit unit)
+    public void OnNetworkUnitIDUpdate(NetworkUnit unit, int unitID)
     {
         var nuStateView = Instantiate(LocalGame.Instance.GameData.UnitStatView, unit.transform);
-        nuStateView.Initialize(this, unit.UnitID.Value);
-        unitStateViewInstances.Add(unit.UnitID.Value, nuStateView);
+        unitStatViewInstances.Add(unitID, nuStateView);
         
         nuStateView.transform.localPosition = Vector3.zero;
         var offset = nuStateView.GetComponent<RectTransform>().rect.height * nuStateView.transform.localScale.y;
         nuStateView.transform.position += Vector3.up * (unit.CurrentMeshRenderer.bounds.extents.y + offset);        
 
         nuStateView.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];        
+
+        if (unit.OwnerConnectionIndexPlusOne.Value - 1 >= 0)
+        {            
+            nuStateView.Initialize(this, unitID, unit.OwnerConnectionIndexPlusOne.Value - 1);
+        }
+    }
+
+    public void OnNetworkUnitOwnerConnectionIDUpdate(NetworkUnit unit, int ownerConnectionIndexPlusOne)
+    {
+        if (unitStatViewInstances.ContainsKey(unit.UnitID.Value))
+        {
+            var nuStateView = unitStatViewInstances[unit.UnitID.Value];
+            nuStateView.Initialize(this, unit.UnitID.Value, ownerConnectionIndexPlusOne - 1);
+        }
     }    
 
     public void OnNetworkUnitDespawn(NetworkUnit unit)
     {        
-        var nuStateView = unitStateViewInstances[unit.UnitID.Value];
+        var nuStateView = unitStatViewInstances[unit.UnitID.Value];
         Destroy(nuStateView.gameObject);
-        unitStateViewInstances.Remove(unit.UnitID.Value);                
+        unitStatViewInstances.Remove(unit.UnitID.Value);                
+    }
+
+    public void OnGameHealthChange(int ownerConnectionIndex, float oldValue, float newValue)
+    {
+        if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == ownerConnectionIndex)
+        {
+            float v = newValue / LocalGame.Instance.GameData.PlayerStartHealth;
+            healthAmountFill.fillAmount = v;
+        }
+        else
+        {
+            playerStatViewInstances[ownerConnectionIndex].SetHealthValue(ownerConnectionIndex, oldValue, newValue);
+        }
     }
 }

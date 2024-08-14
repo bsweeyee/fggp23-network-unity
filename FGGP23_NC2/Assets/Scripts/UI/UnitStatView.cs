@@ -7,17 +7,21 @@ using TMPro;
 
 public class UnitStatView : MonoBehaviour, INetworkUnitHealth
 {
+    [SerializeField] private GameObject healthObject;
     [SerializeField] private Image amountFill;
     [SerializeField] private TextMeshProUGUI damageCounterMaster;
+    [SerializeField] private Image heartFillImage;
 
     private int unitID;
     private GameView gameView;
+
+    private float lastHealthDisplayTime;
 
     public int UnitID { get { return unitID; } }
 
     private LinkedList<TextMeshProUGUI> damageCounterInstances;
 
-    public void Initialize(GameView gameView, int unitID)
+    public void Initialize(GameView gameView, int unitID, int ownerConnectionIndex)
     {
         this.gameView = gameView;
         this.unitID = unitID;
@@ -26,6 +30,16 @@ public class UnitStatView : MonoBehaviour, INetworkUnitHealth
         damageCounterMaster.gameObject.SetActive(false);
 
         damageCounterInstances = new LinkedList<TextMeshProUGUI>();
+        healthObject.gameObject.SetActive(false);
+
+        if (ownerConnectionIndex == LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value)
+        {
+            heartFillImage.color = LocalGame.Instance.GameData.UnitColors[0];
+        }
+        else
+        {
+            heartFillImage.color = LocalGame.Instance.GameData.UnitColors[1];
+        }
     }
 
     void Update()
@@ -42,9 +56,14 @@ public class UnitStatView : MonoBehaviour, INetworkUnitHealth
             }
             dcf = next;
         }
+        if (lastHealthDisplayTime > 0 && Time.time - lastHealthDisplayTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds + 0.5f)
+        {
+            healthObject.gameObject.SetActive(false);
+            lastHealthDisplayTime = -1;
+        }
     }
 
-    public void OnHealthChange(int unitID, float oldValue, float newValue)
+    public void OnNetworkUnitHealthChange(int unitID, float oldValue, float newValue)
     {
         if (newValue == LocalGame.Instance.GameData.UnitMaxHealth) return;
         if (this.unitID == unitID)
@@ -64,6 +83,9 @@ public class UnitStatView : MonoBehaviour, INetworkUnitHealth
             // Debug.Log($"anchor position: {damageCounterInstance.GetComponent<RectTransform>().anchoredPosition}");
             
             damageCounterInstances.AddLast(damageCounterInstance);
+            lastHealthDisplayTime = Time.time;
+
+            healthObject.gameObject.SetActive(true);
         }
     }
 }

@@ -22,6 +22,7 @@ MonoBehaviour:
   - Well Played
   - The Light shall burn you!
   - What should I say...
+  spawnCooldownInSeconds: 1
   networkManager: {fileID: 2226544024732929039, guid: 794686844295f3f47b3a8d48d2456d73, type: 3}
   networkUnit: {fileID: 4135238962880227402, guid: a4618372d39fc2641aeafe7613716a1f, type: 3}
   gameMaterials:
@@ -31,8 +32,13 @@ MonoBehaviour:
   hitAreaPrefab: {fileID: 7717857679220215128, guid: 5b3b83ec1be77674bb5af80238dea883, type: 3}
   gameView: {fileID: 346374073063469233, guid: ff3c09ef6f9c08d41b3c8945162d0b94, type: 3}
   unitStatView: {fileID: 3429740646650284962, guid: 33bd6289c030c8841b5880c520ae90ef, type: 3}
+  playerStatView: {fileID: 3663491115746119325, guid: b5be42b3b5664d140878f752dd650b06, type: 3}
   messageView: {fileID: 3587968794816425159, guid: 4e3afa1ef4b5dd34eba674750a87914f, type: 3}
   replyView: {fileID: 3587968794816425159, guid: 35b12bdd984df244a9080a0ba6abdbd9, type: 3}
+  damageView: {fileID: 1144504760081115140, guid: d06c4328bf70f6d4793e547c2e07fb76, type: 3}
+  playerSpawnPosition:
+  - {x: 0, y: 0, z: -6}
+  - {x: 0, y: 0, z: 6}
   cameraNonNetworkSpawnPosition: {x: 4.5, y: 4, z: -5.5}
   cameraNonNetworkRotation: {x: -0.24321035, y: 0.33036616, z: -0.08852134, w: -0.90767336}
   unitSpawnPosition:
@@ -55,6 +61,9 @@ MonoBehaviour:
   cameraRotation:
   - {x: -0.24321038, y: 0.33036616, z: -0.088521354, w: -0.90767336}
   - {x: 0.08852135, y: 0.90767336, z: -0.2432104, w: 0.3303661}
+  unitColors:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 0, g: 0, b: 0, a: 1}
   unitAttackRadius: 0.8
   unitAttackIntervalSeconds: 2
   unitAttackStrength: 1

@@ -405,6 +405,13 @@ namespace FGNetworkProgramming
                 Gizmos.DrawWireSphere(gameData.UnitSpawnPosition[i], gameData.UnitSpawnRadius[i]);
             }
 
+            Gizmos.color = Color.green;
+            Handles.color = Color.green;
+            for (int i=0; i< gameData.PlayerSpawnPosition.Count; i++)
+            {
+                Handles.DrawSolidDisc(gameData.PlayerSpawnPosition[i], Vector3.up, 0.25f);                                    
+            }
+
             Gizmos.color = Color.white;
             for (int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)
             {

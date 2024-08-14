@@ -75,6 +75,10 @@ public interface IOnMessageReceived {
     void OnMessageReceieved(string message, int ownerconnectionIndex);
 }
 
+public interface IOnGameHealthChange {
+    void OnGameHealthChange(int ownerConnectionIndex, float oldValue, float newValue);
+}
+
 /// <summary>
 /// Network Game tracks GameStates and manages spawned network objects
 /// </summary>
@@ -90,10 +94,8 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     private Queue<TMessagePacket> server_MessageQueue;
 
     private Queue<TSpawnPacket> server_spawnRequestQueue;
-
-    private float client_LastMessageTime;
+    
     private float server_LastMessageTime;
-
     private float server_LastSpawnCooldownTime;
 
     void Start()
@@ -112,6 +114,12 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                 {
                     LocalGame.Instance.ChangeState(EGameState.WIN);
                 }
+            }
+
+            var gameHealthChangeInterfaces = FindObjectsOfType<MonoBehaviour>().OfType<IOnGameHealthChange>(); 
+            foreach(var ghc in gameHealthChangeInterfaces)
+            {
+                ghc.OnGameHealthChange(ConnectionIndex.Value, oldValue, newValue);
             }
         };        
         // NOTE: connection index tracks number of player information so doing the check for state change should work here                 

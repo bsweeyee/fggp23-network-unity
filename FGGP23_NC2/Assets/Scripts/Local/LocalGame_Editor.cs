@@ -11,6 +11,7 @@ namespace FGNetworkProgramming
     [CustomEditor(typeof(LocalGame))]
     public class LocalGame_Editor : Editor
     {
+        private bool bIsDisplayPlayerSpawnPosition;
         private bool bIsDisplaySpawnPosition;
         private bool bDisplayNonNetworkCameraPosition;
         private bool bIsDisplayCameraPosition;
@@ -24,7 +25,30 @@ namespace FGNetworkProgramming
             LocalGame lg = (LocalGame)target;            
 
             EditorGUILayout.LabelField("Game Settings", EditorStyles.boldLabel);
-            
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bIsDisplayPlayerSpawnPosition = EditorGUILayout.Toggle(bIsDisplayPlayerSpawnPosition, GUILayout.Width(15));
+                EditorGUILayout.LabelField("Player Spawn Position", EditorStyles.miniBoldLabel);
+            }
+            if (bIsDisplayPlayerSpawnPosition)
+            {
+                for (int i=0; i< lg.GameData.PlayerSpawnPosition.Count; i++)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {                                        
+                        EditorGUILayout.LabelField(i.ToString(), GUILayout.Width(10));
+                        
+                        var newPos = EditorGUILayout.Vector3Field("", lg.GameData.PlayerSpawnPosition[i]);
+                        if (newPos != lg.GameData.PlayerSpawnPosition[i])
+                        {
+                            lg.GameData.PlayerSpawnPosition[i] = newPos;
+                            SerializeGameData(lg.GameData);
+                        }                       
+                    }
+                }
+            }
+
             using (new EditorGUILayout.HorizontalScope())
             {
                 bIsDisplaySpawnPosition = EditorGUILayout.Toggle(bIsDisplaySpawnPosition, GUILayout.Width(15));
@@ -181,6 +205,23 @@ namespace FGNetworkProgramming
 
             if (!Application.isPlaying)
             {
+                if (bIsDisplayPlayerSpawnPosition)
+                {
+                    var oldColor = GUI.color;
+                    GUI.color = Color.white;
+                    for (int i=0; i<lg.GameData.PlayerSpawnPosition.Count; i++)
+                    {
+                        Handles.Label(lg.GameData.PlayerSpawnPosition[i], i.ToString(), labelStyle);
+                        Vector3 newPos = Handles.PositionHandle(lg.GameData.PlayerSpawnPosition[i], Quaternion.identity);
+                        if (newPos != lg.GameData.PlayerSpawnPosition[i])
+                        {
+                            lg.GameData.PlayerSpawnPosition[i] = newPos;
+                            Repaint();
+                        }                    
+                    }
+                    GUI.color = oldColor;
+                }
+
                 if (bIsDisplaySpawnPosition)
                 {
                     var oldColor = GUI.color;
@@ -234,7 +275,7 @@ namespace FGNetworkProgramming
             if (EditorGUI.EndChangeCheck())
             {
                 if(!Application.isPlaying) {
-                    Undo.RecordObject(lg, "Change Spawn Position"); 
+                    Undo.RecordObject(lg, "Change Game Data"); 
                     SerializeGameData(lg.GameData);                   
                 }
                 // generator.SpawnPoints = sp;
@@ -244,6 +285,11 @@ namespace FGNetworkProgramming
         protected void SerializeGameData(GameData gd)
         {
             var so = new SerializedObject(gd);
+            for (var i=0; i<gd.PlayerSpawnPosition.Count; i++) {
+                var element = so.FindProperty("playerSpawnPosition").GetArrayElementAtIndex(i);                        
+                element.vector3Value = gd.PlayerSpawnPosition[i];
+            }
+            
             for (var i=0; i<gd.UnitSpawnPosition.Count; i++) {
                 var element = so.FindProperty("unitSpawnPosition").GetArrayElementAtIndex(i);                        
                 element.vector3Value = gd.UnitSpawnPosition[i];

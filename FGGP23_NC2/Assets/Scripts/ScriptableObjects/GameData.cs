@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
-using Unity.VisualScripting;
 
 namespace FGNetworkProgramming
 {
@@ -59,17 +58,24 @@ namespace FGNetworkProgramming
         [Header("UI Prefabs")]
         [SerializeField] private GameView gameView;
         [SerializeField] private UnitStatView unitStatView;
+        [SerializeField] private PlayerStatView playerStatView;
         [SerializeField] private Canvas messageView;
         [SerializeField] private Canvas replyView;
+        [SerializeField] private Canvas damageView;
+        
         public GameView GameView { get { return gameView; }}
         public UnitStatView UnitStatView { get { return unitStatView; } }
+        public PlayerStatView PlayerStatView { get { return playerStatView; }}
         public Canvas MessageView { get { return messageView; } }
         public Canvas ReplyView { get { return replyView; } }
+        public Canvas DamageView { get { return damageView; } }
         #endregion
 
         #region Scene Settings
 
         [Header("Scene Settings")]
+        [SerializeField] private List<Vector3> playerSpawnPosition = new List<Vector3>(new Vector3[NUMBER_OF_PLAYERS]);
+
         [SerializeField] private Vector3 cameraNonNetworkSpawnPosition = Vector3.zero;
         [SerializeField] private Quaternion cameraNonNetworkRotation = Quaternion.identity;
 
@@ -78,9 +84,10 @@ namespace FGNetworkProgramming
         [SerializeField] private List<Vector3> cameraSpawnPosition = new List<Vector3>(new Vector3[NUMBER_OF_PLAYERS]);
         [SerializeField] private List<Quaternion> cameraRotation = new List<Quaternion>(new Quaternion[2] { Quaternion.identity, Quaternion.identity } );
 
+        public List<Vector3> PlayerSpawnPosition { get { return playerSpawnPosition; } }
+
         public Vector3 CameraNonNetworkSpawnPosition { get { return cameraNonNetworkSpawnPosition; } set { cameraNonNetworkSpawnPosition = value; } }
         public Quaternion CameraNonNetworkRotation { get { return cameraNonNetworkRotation; } set { cameraNonNetworkRotation= value; } }
-
 
         public List<Vector3> UnitSpawnPosition { get { return unitSpawnPosition; }}         
         public List<float> UnitSpawnRadius { get { return unitSpawnRadius; }} 
@@ -91,12 +98,14 @@ namespace FGNetworkProgramming
         #region Unit Settings
         
         [Header("Unit Settings")]
+        [SerializeField] private List<Color> unitColors = new List<Color>(new Color[NUMBER_OF_PLAYERS]);
         [SerializeField] private float unitAttackRadius = 1;
         [SerializeField] private float unitAttackIntervalSeconds = 1;
         [SerializeField] private float unitAttackStrength = 1;
         [SerializeField] private float unitMaxHealth = 10;
         [SerializeField] private LayerMask unitAttackableLayer;
         
+        public List<Color> UnitColors { get { return unitColors; } }
         public float UnitAttackRadius { get { return unitAttackRadius; }}
         public float UnitMaxHealth { get { return unitMaxHealth; }}
         public float UnitAttackIntervalSeconds { get { return unitAttackIntervalSeconds; }}

@@ -20,12 +20,13 @@ public enum ENetworkUnitState
 
 public interface INetworkUnitHealth
 {
-    void OnHealthChange(int unitID, float oldValue, float newValue);
+    void OnNetworkUnitHealthChange(int unitID, float oldValue, float newValue);
 }
 
 public interface INetworkUnitSpawn
 {
-    void OnNetworkUnitIDUpdate(NetworkUnit unit);
+    void OnNetworkUnitIDUpdate(NetworkUnit unit, int unitID);
+    void OnNetworkUnitOwnerConnectionIDUpdate(NetworkUnit unit, int ownerConnectionIndexPlusOne);
 }
 
 public interface INetworkUnitDespawn
@@ -53,6 +54,7 @@ public class NetworkUnit : NetworkBehaviour
     Collider currentCollider;
 
     int targetUnitID = int.MaxValue;
+    GameSpawnHitArea selectedGameSpawnHit;
 
     public MeshRenderer CurrentMeshRenderer { get { return currentRenderer; } }
 
@@ -74,7 +76,7 @@ public class NetworkUnit : NetworkBehaviour
             var networkUnitSpawnInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitSpawn>();
             foreach(var nii in networkUnitSpawnInterfaces)
             {
-                nii.OnNetworkUnitIDUpdate(this);
+                nii.OnNetworkUnitIDUpdate(this, newValue);
             }        
         };
         OwnerConnectionIndexPlusOne.OnValueChanged += (int previousValue, int newValue) => {
@@ -85,13 +87,19 @@ public class NetworkUnit : NetworkBehaviour
             else
             {
                 currentRenderer.SetMaterials(new List<Material>{ LocalGame.Instance.GameData.GameMaterials[1] } );
-            }            
+            }
+
+            var networkUnitSpawnInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitSpawn>();
+            foreach(var nii in networkUnitSpawnInterfaces)
+            {
+                nii.OnNetworkUnitOwnerConnectionIDUpdate(this, newValue);
+            }               
         };
         Health.OnValueChanged += (float previousValue, float newValue) => {
             var networkUnitHealthInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<INetworkUnitHealth>();
             foreach(var nhi in networkUnitHealthInterfaces)
             {
-                nhi.OnHealthChange(UnitID.Value, previousValue, newValue);
+                nhi.OnNetworkUnitHealthChange(UnitID.Value, previousValue, newValue);
             }
         };        
     }
@@ -137,7 +145,7 @@ public class NetworkUnit : NetworkBehaviour
             if (LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value == (OwnerConnectionIndexPlusOne.Value - 1)) 
             {
                 if (Time.time - client_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
-                {
+                {                    
                     ExecuteAttackRpc(targetUnitID);
                     targetUnitID = SelectAttackTarget();
                     if (targetUnitID >= int.MaxValue) ChangeState(ENetworkUnitState.MOVE);                                    
@@ -225,7 +233,8 @@ public class NetworkUnit : NetworkBehaviour
         } else if (notFriendlyPS.Length > 0)
         {
             int idx = UnityEngine.Random.Range(0, notFriendlyPS.Length);
-            int uID = notFriendlyPS[idx].GetComponent<GameSpawnHitArea>().OwnerConnectionIndex + 1;                                     
+            var selectedGameSpawnHit = notFriendlyPS[idx].GetComponent<GameSpawnHitArea>();
+            int uID = selectedGameSpawnHit.OwnerConnectionIndex + 1;                                     
             return int.MaxValue - uID; // we return the ownerConnectionIndex instead of Unit index if we are hitting the player
         }                
         return int.MaxValue;

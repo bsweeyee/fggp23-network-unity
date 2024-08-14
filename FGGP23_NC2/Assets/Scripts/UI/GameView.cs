@@ -29,6 +29,7 @@ public class GameView : MonoBehaviour,
 
     private Dictionary<int, float> lastReplyCanvasDisplayTime;
     private float lastMessageSendTime = -1;
+    private float lastSpawnRequestSendTime = -1;
     
     public void Initialize(LocalGame localGame, Camera worldCamera)
     {
@@ -156,6 +157,16 @@ public class GameView : MonoBehaviour,
                 }
                 lastMessageSendTime = -1;
             }
+            
+            // we reset all the spawn buttons when cooldown is done
+            if (lastSpawnRequestSendTime >= 0 && Time.time - lastSpawnRequestSendTime > LocalGame.Instance.GameData.SpawnCooldownInSeconds)
+            {
+                foreach(var b in spawnUnitButtons)
+                {
+                    b.interactable = true;
+                } 
+                lastSpawnRequestSendTime = -1;
+            }            
             break;
         }
     }
@@ -188,15 +199,22 @@ public class GameView : MonoBehaviour,
         int[] indices = new int[spawnUnitButtons.Count];
         for(int i=0; i<indices.Length; i++) indices[i] = i;
 
+        // initializing spawn unit button states
         for(int i=0; i<spawnUnitButtons.Count; i++)
         {   
             int index = indices[i];         
             spawnUnitButtons[i].onClick.RemoveAllListeners();
             spawnUnitButtons[i].onClick.AddListener(() => {
                 var x = index;
-                if (clientID%2 != 0) x = indices.Length - index - 1;                 
+                if (clientID%2 != 0) x = indices.Length - index - 1;
+                lastSpawnRequestSendTime = Time.time;
                 OnSpawnUnit(networkGame, x);
+                foreach(var b in spawnUnitButtons)
+                {
+                    b.interactable = false;
+                }                 
             });
+            spawnUnitButtons[i].interactable = true;
         }
 
         // reposition MessageViewCanvas to face the camera and also closer to camera view plane

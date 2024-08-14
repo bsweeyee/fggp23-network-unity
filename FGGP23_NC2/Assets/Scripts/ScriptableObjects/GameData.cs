@@ -19,6 +19,8 @@ namespace FGNetworkProgramming
         [SerializeField] private float messageDisplayCooldownInSeconds = 1.0f;
         [SerializeField] private List<string> messages;
 
+        [SerializeField] private float spawnCooldownInSeconds = 1.0f;
+
         public float PlayerStartHealth { get { return playerStartHealth;} }
 
         public LayerMask PlayerAttackableLayer { get { return playerAttackableLayer; }}
@@ -28,6 +30,8 @@ namespace FGNetworkProgramming
         public float MessageDisplayCooldownInSeconds { get { return messageDisplayCooldownInSeconds; }}
 
         public List<string> Messages { get { return messages; } }
+
+        public float SpawnCooldownInSeconds { get { return spawnCooldownInSeconds; } }
         #endregion
 
         #region Network Prefabs

@@ -59,6 +59,18 @@ public struct TMessagePacket
     public string Message;
 }
 
+public struct TSpawnPacket
+{
+    public int ConnectionIndex;
+    public int SpawnIndex;
+
+    public TSpawnPacket(int connectionIndex, int spawnIndex)
+    {
+        this.ConnectionIndex = connectionIndex;
+        this.SpawnIndex = spawnIndex;
+    }
+}
+
 public interface IOnMessageReceived {
     void OnMessageReceieved(string message, int ownerconnectionIndex);
 }
@@ -76,12 +88,19 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     private bool hasAssignedConnectionIndex = false;
 
     private Queue<TMessagePacket> server_MessageQueue;
+
+    private Queue<TSpawnPacket> server_spawnRequestQueue;
+
     private float client_LastMessageTime;
     private float server_LastMessageTime;
+
+    private float server_LastSpawnCooldownTime;
 
     void Start()
     {
         server_MessageQueue = new Queue<TMessagePacket>();
+        server_spawnRequestQueue = new Queue<TSpawnPacket>();
+
         PlayerHealth.OnValueChanged += (float oldValue, float newValue) => {
             if (newValue <= 0)
             {
@@ -292,6 +311,42 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                     DistributeMessageRpc(mp.Message, mp.SenderConnectionIndex);                    
                 }
             }
+
+            if (server_spawnRequestQueue.Count > 0)
+            {
+                if (Time.time - server_LastSpawnCooldownTime > LocalGame.Instance.GameData.SpawnCooldownInSeconds)
+                {
+                    var spawnRequest = server_spawnRequestQueue.Dequeue();
+
+                    // TODO: do some sanity check here to see if player can spawn unit
+                    NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit);        
+                    ob.GetComponent<NetworkObject>().Spawn();
+
+                    int interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);        
+                    // var offset = UnityEngine.Random.Range(0, interval);
+                    var targetConnectionIndex = UnityEngine.Random.Range(0, GameData.NUMBER_OF_PLAYERS);
+                    if (targetConnectionIndex == spawnRequest.ConnectionIndex)
+                    {
+                        targetConnectionIndex += 1;
+                        targetConnectionIndex %= GameData.NUMBER_OF_PLAYERS;
+                    }
+                    
+                    int toTargetIndex = interval * targetConnectionIndex + spawnRequest.SpawnIndex;
+                    int toSpawnIndex = interval * spawnRequest.ConnectionIndex + spawnRequest.SpawnIndex;                
+
+                    // initializing all variables on server side
+                    ob.UnitID.Value = System.Guid.NewGuid().GetHashCode(); 
+                    ob.OwnerConnectionIndexPlusOne.Value = spawnRequest.ConnectionIndex + 1;
+                    ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[toTargetIndex];
+                    ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;                
+                    
+                    ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[toSpawnIndex];                                 
+                    ob.ChangeState(ENetworkUnitState.MOVE); // TOOD: I think I made 2 network rpcs here because ChangeState is another network RPC. See if we can skip the other RPC call since this is already a serverRPC                                        
+
+                    server_spawnRequestQueue.Clear();
+                    server_LastSpawnCooldownTime = Time.time;
+                }
+            }
         }
     }
 
@@ -331,30 +386,7 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     [Rpc(SendTo.Server)]
     public void SpawnUnitRpc(int connectionIndex, int spawnIndex)
     {
-        // TODO: do some sanity check here to see if player can spawn unit
-        NetworkUnit ob = Instantiate(LocalGame.Instance.GameData.NetworkUnit);        
-        ob.GetComponent<NetworkObject>().Spawn();
-
-
-        int interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);        
-        // var offset = UnityEngine.Random.Range(0, interval);
-        var targetConnectionIndex = UnityEngine.Random.Range(0, GameData.NUMBER_OF_PLAYERS);
-        if (targetConnectionIndex == connectionIndex)
-        {
-            targetConnectionIndex += 1;
-            targetConnectionIndex %= GameData.NUMBER_OF_PLAYERS;
-        }
-        
-        int toTargetIndex = interval * targetConnectionIndex + spawnIndex;
-        int toSpawnIndex = interval * connectionIndex + spawnIndex;                
-
-        ob.UnitID.Value = System.Guid.NewGuid().GetHashCode(); 
-        ob.OwnerConnectionIndexPlusOne.Value = connectionIndex + 1;
-        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[toSpawnIndex];                         
-        
-        ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[toTargetIndex];
-        ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;                
-        ob.ChangeState(ENetworkUnitState.MOVE);
+        server_spawnRequestQueue.Enqueue(new TSpawnPacket(connectionIndex, spawnIndex));       
     }
 
     [Rpc(SendTo.Server)]

@@ -200,10 +200,13 @@ public class GameView : MonoBehaviour,
         }
 
         // reposition MessageViewCanvas to face the camera and also closer to camera view plane
-        messageViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[clientID];
+        int interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);
+        int middleIndex = interval * clientID + (interval / 2);
+
+        messageViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
         messageViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[clientID];
 
-        Vector3 d = LocalGame.Instance.GameData.CameraSpawnPosition[clientID] - LocalGame.Instance.GameData.UnitSpawnPosition[clientID];
+        Vector3 d = LocalGame.Instance.GameData.CameraSpawnPosition[clientID] - LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
         Vector3 projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                 
         messageViewCanvasInstance.transform.position += (projectedD * 0.9f);
@@ -212,11 +215,15 @@ public class GameView : MonoBehaviour,
         for(int i=0; i<LocalGame.Instance.NetworkGameInstances.Count; i++)
         {
             var ng = LocalGame.Instance.NetworkGameInstances[i];
+            
+            interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);
+            middleIndex = interval * ng.ConnectionIndex.Value + (interval / 2);
+            
             var replyViewCanvasInstance = replyViewCanvasInstances[i];            
-            replyViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[ng.ConnectionIndex.Value];
+            replyViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
             replyViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value];
             
-            d = LocalGame.Instance.GameData.CameraSpawnPosition[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value] - LocalGame.Instance.GameData.UnitSpawnPosition[ng.ConnectionIndex.Value];
+            d = LocalGame.Instance.GameData.CameraSpawnPosition[LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value] - LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
             projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                     
             replyViewCanvasInstance.transform.position += (projectedD * 0.9f);

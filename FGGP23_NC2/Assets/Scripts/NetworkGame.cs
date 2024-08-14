@@ -346,11 +346,11 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         }
         
         int toTargetIndex = interval * targetConnectionIndex + spawnIndex;
-        int toSpawnIdx = interval * connectionIndex + spawnIndex;                
+        int toSpawnIndex = interval * connectionIndex + spawnIndex;                
 
         ob.UnitID.Value = System.Guid.NewGuid().GetHashCode(); 
         ob.OwnerConnectionIndexPlusOne.Value = connectionIndex + 1;
-        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[toSpawnIdx];                         
+        ob.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[toSpawnIndex];                         
         
         ob.MoveTarget.Value = LocalGame.Instance.GameData.UnitSpawnPosition[toTargetIndex];
         ob.Health.Value = LocalGame.Instance.GameData.UnitMaxHealth;                

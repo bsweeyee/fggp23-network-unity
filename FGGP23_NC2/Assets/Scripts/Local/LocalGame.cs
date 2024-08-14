@@ -65,7 +65,8 @@ namespace FGNetworkProgramming
         private static LocalGame instance;
 
         #region GUI variables
-        private bool bIsShowLog = true;
+        private bool bIsShowLog = false;
+        private bool bIsShowDebug = false;
         Queue logQueue = new Queue();
         #endregion
 
@@ -151,7 +152,15 @@ namespace FGNetworkProgramming
         }
         
         void OnGUI()
-        {        
+        {
+            string displayDebugDisplayText = (!bIsShowDebug) ? "Open Debug" : "Close Debug";
+            if (GUILayout.Button($"{displayDebugDisplayText}"))
+            {
+                bIsShowDebug = !bIsShowDebug;
+            }
+
+            if (!bIsShowDebug) return;
+
             if (!NetworkManager.Singleton.IsConnectedClient)
             {
                 if (GUILayout.Button("Host"))

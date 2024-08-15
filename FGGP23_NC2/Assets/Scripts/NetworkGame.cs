@@ -166,7 +166,6 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
             NetworkManager.Singleton.OnConnectionEvent += HandleClientConnectionEvent;
             if (IsServer)
             {
-                NetworkManager.Singleton.OnServerStarted += HandleServerStart;
                 NetworkManager.Singleton.OnServerStopped += HandleServerStop;
             }
         }
@@ -229,9 +228,12 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
 
         switch(c.EventType)
         {
+            case ConnectionEvent.ClientConnected:
+            NetworkManager.Singleton.OnClientStopped -= LocalGame.Instance.HandleLocalClientStop;
+            break;
             case ConnectionEvent.ClientDisconnected:
             if (c.ClientId == m.LocalClientId)
-            {                                
+            {
                 NetworkManager.Singleton.OnConnectionEvent -= HandleClientConnectionEvent;
                 LocalGame.Instance.ChangeState(EGameState.START);
             }
@@ -309,20 +311,14 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         }
     }
 
-    void HandleServerStart()
-    {
-        Debug.Log($"server started");
-        LocalGame.Instance.ChangeState(EGameState.WAITING);
-    }
-
     void HandleServerStop(bool b)
     {
         Debug.Log($"server stopped: {b}");                    
         LocalGame.Instance.ChangeState(EGameState.START);
         
-        NetworkManager.Singleton.OnServerStarted -= HandleServerStart;
         NetworkManager.Singleton.OnServerStopped -= HandleServerStop;
         NetworkManager.Singleton.OnConnectionEvent -= HandleServerConnectionEvent;
+        NetworkManager.Singleton.OnConnectionEvent -= HandleClientConnectionEvent;
     }
 
     void Update()

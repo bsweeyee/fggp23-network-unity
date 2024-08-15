@@ -123,13 +123,18 @@ namespace FGNetworkProgramming
             gameViewInstance.Initialize(this, mainCameraInstance.GameCamera);
             singlePlayerViewInstance.Initialize();
 
-            Input.Instance.Initialize();
+            Input.Instance.Initialize();           
+
+            networkManagerInstance.OnClientStarted += HandleLocalClientStarted;
 
             networkManagerInstance.ConnectionApprovalCallback += (NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response) => {
-                if (networkManagerInstance.ConnectedClientsIds.Count > GameData.NUMBER_OF_PLAYERS)
-                {
+                if (networkManagerInstance.ConnectedClientsIds.Count >= GameData.NUMBER_OF_PLAYERS)
+                {                    
                     response.Approved = false;
+                    return;
                 }
+                response.Approved = true;
+                response.CreatePlayerObject = true;
             };             
             // Input.Instance.OnHandleMouseInput.AddListener((Vector2 mousePos, EGameInput input, EInputState state) => {
             //     switch(input)
@@ -280,6 +285,17 @@ namespace FGNetworkProgramming
             while (logQueue.Count > 5) logQueue.Dequeue();
         }                
         
+        public void HandleLocalClientStarted()
+        {
+             ChangeState(EGameState.WAITING);
+        }
+
+        public void HandleLocalClientStop(bool b)
+        {
+            networkManagerInstance.OnClientStopped -= HandleLocalClientStop;
+            ChangeState(EGameState.START);
+        }
+
         void ClearNetworkUnits()
         {
             if (MyNetworkGameInstance != null && MyNetworkGameInstance.IsServer)
@@ -331,6 +347,7 @@ namespace FGNetworkProgramming
             switch(newState)
             {
                 case EGameState.START:
+                networkManagerInstance.OnClientStopped += HandleLocalClientStop;
                 if (backgroundInstance) Destroy(backgroundInstance);
                 
                 ClearHitAreas();

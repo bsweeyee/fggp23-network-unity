@@ -7,6 +7,7 @@ using FGNetworkProgramming;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using System;
+using Unity.Netcode;
 
 public class GameView : MonoBehaviour, 
                         IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting, IOnGameStateWin, IOnGameStateLose, 
@@ -21,6 +22,7 @@ public class GameView : MonoBehaviour,
     [SerializeField] private TMP_InputField customMessageInput;
     [SerializeField] private Button openMessageButton;
     [SerializeField] private Image healthAmountFill;
+    [SerializeField] private Button leaveRoom;
 
     /// <summary>
     /// Spawned game instances
@@ -130,7 +132,11 @@ public class GameView : MonoBehaviour,
             var playerStatViewInstance = Instantiate(LocalGame.Instance.GameData.PlayerStatView);
             playerStatViewInstance.Initialize(this);
             playerStatViewInstances.Add(i, playerStatViewInstance);
-        }                
+        }
+
+        leaveRoom.onClick.AddListener(() => {
+            NetworkManager.Singleton.Shutdown();            
+        });              
     }
     
     private void Update()

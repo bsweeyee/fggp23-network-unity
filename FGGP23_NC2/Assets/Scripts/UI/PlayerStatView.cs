@@ -56,7 +56,7 @@ public class PlayerStatView : MonoBehaviour, IOnGameStateLose, IOnGameStateWin, 
     public void ExitGamePlayState()
     {
         healtBar.gameObject.SetActive(false);
-        lastTimeDisplayTime = 0;
+        lastTimeDisplayTime = -1;
     }
 
     public void SetHealthValue(int ownerConnectionIndex, float oldHealth, float newHealth)
@@ -84,8 +84,8 @@ public class PlayerStatView : MonoBehaviour, IOnGameStateLose, IOnGameStateWin, 
         var dcf = damageTextInstances.First;
         while (dcf != null)
         {
-            Destroy(dcf.Value.gameObject);                            
             var next = dcf.Next;            
+            Destroy(dcf.Value.gameObject);                            
             dcf = next;
         }
         damageTextInstances.Clear();

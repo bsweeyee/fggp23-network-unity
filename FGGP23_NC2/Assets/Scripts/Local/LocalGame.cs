@@ -4,13 +4,10 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEditor;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Unity.VisualScripting;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.EventSystems;
+using Unity.Networking.Transport.Relay;
 
 namespace FGNetworkProgramming
-{
+{    
     public enum EGameState
     {
         NONE,
@@ -55,6 +52,7 @@ namespace FGNetworkProgramming
         private NetworkManager networkManagerInstance;
         private LocalGameCamera mainCameraInstance;
         private GameView gameViewInstance;
+        private SinglePlayerView singlePlayerViewInstance;
         private GameObject backgroundInstance;
         private List<GameSpawnHitArea> hitAreas;
         private List<ProjectileHandler> projectileHandlers; 
@@ -118,28 +116,37 @@ namespace FGNetworkProgramming
                         
             networkManagerInstance =  Instantiate(gameData.NetworkManager);
             gameViewInstance = Instantiate(gameData.GameView);            
+            singlePlayerViewInstance = Instantiate(gameData.SinglePlayerView);
             mainCameraInstance = FindObjectOfType<LocalGameCamera>(); // TODO: we might want to instantiate it later
 
             mainCameraInstance.Initialize(this);
             gameViewInstance.Initialize(this, mainCameraInstance.GameCamera);
+            singlePlayerViewInstance.Initialize();
 
-            Input.Instance.Initialize();            
-            Input.Instance.OnHandleMouseInput.AddListener((Vector2 mousePos, EGameInput input, EInputState state) => {
-                switch(input)
+            Input.Instance.Initialize();
+
+            networkManagerInstance.ConnectionApprovalCallback += (NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response) => {
+                if (networkManagerInstance.ConnectedClientsIds.Count > GameData.NUMBER_OF_PLAYERS)
                 {
-                    case EGameInput.LEFT_MOUSE_BUTTON:
-                    if (state == EInputState.PRESSED)
-                    {
-                        Ray ray = mainCameraInstance.GameCamera.ScreenPointToRay(mousePos);                        
-                        RaycastHit hit;                    
-                        bool isHit = Physics.Raycast(ray, out hit);
-                        if (isHit)
-                        {                            
-                        }
-                    }
-                    break;
+                    response.Approved = false;
                 }
-            });            
+            };             
+            // Input.Instance.OnHandleMouseInput.AddListener((Vector2 mousePos, EGameInput input, EInputState state) => {
+            //     switch(input)
+            //     {
+            //         case EGameInput.LEFT_MOUSE_BUTTON:
+            //         if (state == EInputState.PRESSED)
+            //         {
+            //             Ray ray = mainCameraInstance.GameCamera.ScreenPointToRay(mousePos);                        
+            //             RaycastHit hit;                    
+            //             bool isHit = Physics.Raycast(ray, out hit);
+            //             if (isHit)
+            //             {                            
+            //             }
+            //         }
+            //         break;
+            //     }
+            // });            
 
             ChangeState(EGameState.START);
         }

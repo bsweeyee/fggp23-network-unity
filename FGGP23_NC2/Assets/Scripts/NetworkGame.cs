@@ -134,7 +134,7 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                 }
             }
 
-            var gameHealthChangeInterfaces = FindObjectsOfType<MonoBehaviour>().OfType<IOnGameHealthChange>(); 
+            var gameHealthChangeInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameHealthChange>(); 
             foreach(var ghc in gameHealthChangeInterfaces)
             {
                 ghc.OnGameHealthChange(ConnectionIndex.Value, oldValue, newValue);

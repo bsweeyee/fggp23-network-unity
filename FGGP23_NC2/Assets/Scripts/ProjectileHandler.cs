@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using FGNetworkProgramming;
+using Unity.Networking.Transport.Utilities;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 
-public class ProjectileHandler : MonoBehaviour
+public class ProjectileHandler : MonoBehaviour 
 {
     [Range(0, 1)][SerializeField] private float projectileForwardStrength = 0.2f;
     [Range(0, 1)][SerializeField] private float normalizedForwardDirection = 0.5f;
@@ -87,6 +88,14 @@ public class ProjectileHandler : MonoBehaviour
     void OnDestroy()
     {
         FGNetworkProgramming.Input.Instance.OnHandleKeyboardInput.RemoveListener(OnHandleKeyboardInput);
+        var e = projectilesList.First;
+        while (e != null)
+        {
+            var next = e.Next;
+            Destroy(e.Value);
+            e = next;          
+        }
+        projectilesList.Clear();
     }
     
     void Update()

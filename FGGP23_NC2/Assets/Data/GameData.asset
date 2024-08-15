@@ -33,6 +33,7 @@ MonoBehaviour:
   projectileHandlerPrefab: {fileID: 2644942414749431723, guid: 53b18809460bd80458d601f66d88cc4a, type: 3}
   projectilePrefab: {fileID: 6648248155245754814, guid: d609b306c1d81564abb1e5cd94ede70c, type: 3}
   gameView: {fileID: 346374073063469233, guid: ff3c09ef6f9c08d41b3c8945162d0b94, type: 3}
+  singlePlayerView: {fileID: 328187609023274199, guid: 8f988da70d2ec55479c75b12f0f356c6, type: 3}
   unitStatView: {fileID: 3429740646650284962, guid: 33bd6289c030c8841b5880c520ae90ef, type: 3}
   playerStatView: {fileID: 3663491115746119325, guid: b5be42b3b5664d140878f752dd650b06, type: 3}
   messageView: {fileID: 3587968794816425159, guid: 4e3afa1ef4b5dd34eba674750a87914f, type: 3}
@@ -84,3 +85,4 @@ MonoBehaviour:
   projectileGravity: {x: 0, y: -1, z: 0}
   projectileRadius: 1
   projectileAttackStrength: 5
+  projectileCooldownInSeconds: 3

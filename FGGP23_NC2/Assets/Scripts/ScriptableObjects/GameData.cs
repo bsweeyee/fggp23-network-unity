@@ -61,6 +61,7 @@ namespace FGNetworkProgramming
 
         [Header("UI Prefabs")]
         [SerializeField] private GameView gameView;
+        [SerializeField] private SinglePlayerView singlePlayerView;
         [SerializeField] private UnitStatView unitStatView;
         [SerializeField] private PlayerStatView playerStatView;
         [SerializeField] private Canvas messageView;
@@ -68,6 +69,7 @@ namespace FGNetworkProgramming
         [SerializeField] private Canvas damageView;
         
         public GameView GameView { get { return gameView; }}
+        public SinglePlayerView SinglePlayerView { get { return singlePlayerView; } }
         public UnitStatView UnitStatView { get { return unitStatView; } }
         public PlayerStatView PlayerStatView { get { return playerStatView; }}
         public Canvas MessageView { get { return messageView; } }

@@ -78,7 +78,9 @@ MonoBehaviour:
     m_Bits: 64
   minForwardStrength: 0.1
   maxForwardStrength: 0.2
-  minNormalizedDirection: 0.35
-  maxNormalizedDirection: 0.65
+  minNormalizedDirection: 0.25
+  maxNormalizedDirection: 0.75
   projectileUpStrength: 0.2
   projectileGravity: {x: 0, y: -1, z: 0}
+  projectileRadius: 1
+  projectileAttackStrength: 5

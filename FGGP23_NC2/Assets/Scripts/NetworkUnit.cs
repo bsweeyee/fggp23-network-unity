@@ -281,6 +281,17 @@ public class NetworkUnit : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
+    public void ExecuteProjectileAttackRpc(int tUnitID)
+    {
+        NetworkUnit unit = LocalGame.Instance.NetworkUnitInstances[tUnitID];                
+        unit.GetComponent<NetworkUnit>().Health.Value -= LocalGame.Instance.GameData.ProjectileAttackStrength;                        
+        if (unit.GetComponent<NetworkUnit>().Health.Value <= 0)
+        {                            
+            unit.GetComponent<NetworkUnit>().ChangeState(ENetworkUnitState.DEAD);
+        }  
+    }
+
+    [Rpc(SendTo.Server)]
     private void ChangeStateRpc(ENetworkUnitState newState)
     {
         switch(newState)

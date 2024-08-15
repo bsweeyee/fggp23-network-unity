@@ -84,8 +84,12 @@ public class ProjectileHandler : MonoBehaviour
     {
         var forwardDirection = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
         var inputVelocity = forwardDirection * projectileForwardStrength + new Vector3(0, LocalGame.Instance.GameData.ProjectileUpStrength, 0);
+        LocalGame.Instance.MyNetworkGameInstance.SpawnProjectileServerRpc(ownerConnectionId, transform.position, transform.rotation, inputVelocity);        
+    }
 
-        var projectile = Instantiate(LocalGame.Instance.GameData.ProjectilePrefab, transform.position, transform.rotation);
+    public void CreateProjectile(Vector3 position, Quaternion rotation, Vector3 inputVelocity)
+    {
+        var projectile = Instantiate(LocalGame.Instance.GameData.ProjectilePrefab, position, rotation);
         projectile.Initialize(this, timeIntervalResolution, LocalGame.Instance.GameData.ProjectileGravity, inputVelocity);
         projectilesList.AddLast(projectile);
     }
@@ -97,23 +101,22 @@ public class ProjectileHandler : MonoBehaviour
     }
     
     void OnHandleKeyboardInput(EGameInput gameInput, EInputState inputState)
-    {
-        Debug.Log($"handle input: {gameInput}, {inputState}");
+    {        
         if (inputState == EInputState.HOLD)
         {
             switch(gameInput)
             {
                 case EGameInput.W:
-                projectileForwardStrength = Mathf.Clamp(projectileForwardStrength + (0.1f * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);
+                projectileForwardStrength = Mathf.Clamp(projectileForwardStrength + (LocalGame.Instance.GameData.ForwardStrengthAdjustmentSpeed  * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);
                 break;
                 case EGameInput.A:                
-                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection - (0.1f * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection - (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
                 break;
                 case EGameInput.S:
-                projectileForwardStrength = Mathf.Clamp(projectileForwardStrength - (0.1f * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);;
+                projectileForwardStrength = Mathf.Clamp(projectileForwardStrength - (LocalGame.Instance.GameData.ForwardStrengthAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);;
                 break;
                 case EGameInput.D:
-                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection + (0.1f * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection + (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
                 break;
             }
         }
@@ -149,7 +152,7 @@ public class ProjectileHandler : MonoBehaviour
             t -= timeIntervalResolution;                         
         }
         Handles.color = Color.yellow;
-        Handles.DrawSolidDisc(finalPos, Vector3.up, 1.0f);
+        Handles.DrawSolidDisc(finalPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius);
     }
 #endif
 }

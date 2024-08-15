@@ -40,6 +40,7 @@ public class GameView : MonoBehaviour,
     private Dictionary<int, float> lastReplyCanvasDisplayTime;
     private float lastMessageSendTime = -1;
     private float lastSpawnRequestSendTime = -1;
+    private float lastFireRequestSendTime = -1;
     
     public void Initialize(LocalGame localGame, Camera worldCamera)
     {
@@ -185,6 +186,13 @@ public class GameView : MonoBehaviour,
                     b.interactable = true;
                 } 
                 lastSpawnRequestSendTime = -1;
+            }
+
+            // we reset fire button when cooldown is done
+            if (lastFireRequestSendTime >= 0 && Time.time - lastFireRequestSendTime > LocalGame.Instance.GameData.ProjectileCooldownInSeconds)
+            {
+                fireButton.interactable = true;
+                lastFireRequestSendTime = -1;
             }            
             break;
         }
@@ -332,14 +340,17 @@ public class GameView : MonoBehaviour,
         }        
 
         // initialize fire button
+        fireButton.interactable = true;
         fireButton.onClick.RemoveAllListeners();
         fireButton.onClick.AddListener(() => {
-            Debug.Log("fire index: " + myConnectionIndex);
             var ph = LocalGame.Instance.ProjectileHandlers[myConnectionIndex];
             ph.Spawn(myConnectionIndex);
+            lastFireRequestSendTime = Time.time;
+            fireButton.interactable = false;
         });
 
         lastMessageSendTime = -1;
+        lastFireRequestSendTime = -1;
     }
 
     public void OnGameStateStart(LocalGame game)
@@ -366,6 +377,7 @@ public class GameView : MonoBehaviour,
         }
 
         fireButton.onClick.RemoveAllListeners();
+        fireButton.interactable = true;
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
@@ -386,6 +398,7 @@ public class GameView : MonoBehaviour,
         }
 
         fireButton.onClick.RemoveAllListeners();
+        fireButton.interactable = true;
     }
 
     public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -411,6 +424,7 @@ public class GameView : MonoBehaviour,
         }
 
         fireButton.onClick.RemoveAllListeners();
+        fireButton.interactable = true;
     }
 
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -437,6 +451,7 @@ public class GameView : MonoBehaviour,
         }
 
         fireButton.onClick.RemoveAllListeners();
+        fireButton.interactable = true;
     }
 
     public void OnMessageReceieved(string message, int ownerconnectionIndex)

@@ -71,6 +71,22 @@ public struct TSpawnPacket
     }
 }
 
+public struct TProjectilePacket
+{
+    public int ConnectionIndex;
+    public Vector3 Position;
+    public Quaternion Rotation;
+    public Vector3 InputVelocity;
+
+    public TProjectilePacket(int connectionIndex, Vector3 position, Quaternion rotation, Vector3 inputVelocity)
+    {
+        this.ConnectionIndex = connectionIndex;
+        this.Position = position;
+        this.Rotation = rotation;
+        this.InputVelocity = inputVelocity;
+    }
+}
+
 public interface IOnMessageReceived {
     void OnMessageReceieved(string message, int ownerconnectionIndex);
 }
@@ -92,16 +108,18 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     private bool hasAssignedConnectionIndex = false;
 
     private Queue<TMessagePacket> server_MessageQueue;
-
     private Queue<TSpawnPacket> server_spawnRequestQueue;
+    private Queue<TProjectilePacket> server_projectileRequestQueue;
     
     private float server_LastMessageTime;
     private float server_LastSpawnCooldownTime;
+    private float server_LastProjectileCooldownTime;
 
     void Start()
     {
         server_MessageQueue = new Queue<TMessagePacket>();
         server_spawnRequestQueue = new Queue<TSpawnPacket>();
+        server_projectileRequestQueue = new Queue<TProjectilePacket>();
 
         PlayerHealth.OnValueChanged += (float oldValue, float newValue) => {
             if (newValue <= 0)
@@ -355,6 +373,17 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
                     server_LastSpawnCooldownTime = Time.time;
                 }
             }
+
+            if (server_projectileRequestQueue.Count > 0)
+            {
+                if (Time.time - server_LastProjectileCooldownTime > LocalGame.Instance.GameData.ProjectileCooldownInSeconds)
+                {
+                    var pr = server_projectileRequestQueue.Dequeue();
+                    SpawnProjectileClientHostRpc(pr.ConnectionIndex, pr.Position, pr.Rotation, pr.InputVelocity);
+                    server_projectileRequestQueue.Clear();
+                    server_LastProjectileCooldownTime = Time.time;
+                }
+            }
         }
     }
 
@@ -373,6 +402,14 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
         {
             rmi.OnMessageReceieved(message.ToString(), senderConnectionIndex);
         }
+    }
+    #endregion
+
+    #region CLIENT_HOST RPCS
+    [Rpc(SendTo.ClientsAndHost)]
+    void SpawnProjectileClientHostRpc(int connectionIndex, Vector3 position, Quaternion rotation, Vector3 inputVelocity)
+    {
+        LocalGame.Instance.ProjectileHandlers[connectionIndex].CreateProjectile(position, rotation, inputVelocity);
     }
     #endregion 
     
@@ -395,6 +432,12 @@ public class NetworkGame : NetworkBehaviour, IOnGameStatePlay
     public void SpawnUnitRpc(int connectionIndex, int spawnIndex)
     {
         server_spawnRequestQueue.Enqueue(new TSpawnPacket(connectionIndex, spawnIndex));       
+    }
+
+    [Rpc(SendTo.Server)]
+    public void SpawnProjectileServerRpc(int connectionIndex, Vector3 position, Quaternion rotation, Vector3 inputVelocity)
+    {
+        server_projectileRequestQueue.Enqueue(new TProjectilePacket(connectionIndex, position, rotation, inputVelocity));
     }
 
     [Rpc(SendTo.Server)]

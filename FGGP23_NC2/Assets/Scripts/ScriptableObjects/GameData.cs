@@ -127,9 +127,14 @@ namespace FGNetworkProgramming
         [SerializeField] private float minNormalizedDirection = 0.35f;
         [SerializeField] private float maxNormalizedDirection = 0.65f;
 
+        private float forwardDirectionAdjustmentSpeed = 0.2f;
+        private float forwardStrengthAdjustmentSpeed = 0.2f;
+
         [SerializeField] private float projectileUpStrength = 0.2f;
         [SerializeField] private Vector3 projectileGravity = new Vector3(0.0f, -1.0f, 0.0f);
-        
+        [SerializeField] private float projectileRadius = 1.0f;
+        [SerializeField] private float projectileAttackStrength = 5.0f;
+        [SerializeField] private float projectileCooldownInSeconds = 3;
         
         public float MinForwardStrength { get { return minForwardStrength; } }
         public float MaxForwardStrength { get { return maxForwardStrength; } 
@@ -137,8 +142,14 @@ namespace FGNetworkProgramming
         public float MinNormalizedDirection { get { return minNormalizedDirection; } }
         public float MaxNormalizedDirection { get { return maxNormalizedDirection; } }
         
+        public float ForwardDirectionAdjustmentSpeed { get { return forwardDirectionAdjustmentSpeed; } }
+        public float ForwardStrengthAdjustmentSpeed { get { return forwardStrengthAdjustmentSpeed; } }
+
         public float ProjectileUpStrength { get { return projectileUpStrength; } }
         public Vector3 ProjectileGravity { get { return projectileGravity; } }
+        public float ProjectileRadius { get { return projectileRadius; } }
+        public float ProjectileAttackStrength { get { return projectileAttackStrength; } }
+        public float ProjectileCooldownInSeconds { get { return projectileCooldownInSeconds; } }
         #endregion
     }
 }

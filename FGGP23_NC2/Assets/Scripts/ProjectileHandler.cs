@@ -168,21 +168,22 @@ public class ProjectileHandler : MonoBehaviour
     {        
         if (inputState == EInputState.HOLD)
         {
+            var dotSign = Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward));
             switch(gameInput)
             {
                 case EGameInput.W:
                 projectileForwardStrength = Mathf.Clamp(projectileForwardStrength + (LocalGame.Instance.GameData.ForwardStrengthAdjustmentSpeed  * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);
                 break;
                 case EGameInput.A:                
-                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection - (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
-                mesh.transform.forward = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
+                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection - dotSign*(LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                mesh.transform.forward = -dotSign * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
                 break;
                 case EGameInput.S:
                 projectileForwardStrength = Mathf.Clamp(projectileForwardStrength - (LocalGame.Instance.GameData.ForwardStrengthAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);;
                 break;
                 case EGameInput.D:
-                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection + (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
-                mesh.transform.forward = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
+                normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection + dotSign*(LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                mesh.transform.forward = -dotSign * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
                 break;
             }
         }

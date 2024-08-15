@@ -10,10 +10,16 @@ public class ProjectileHandler : MonoBehaviour
 {
     [Range(0, 1)][SerializeField] private float projectileForwardStrength = 0.2f;
     [Range(0, 1)][SerializeField] private float normalizedForwardDirection = 0.5f;
-    
-    private int ownerConnectionId;
+    [SerializeField] private GameObject mesh;
+    [SerializeField] private GameObject projectilePoint;
+    [SerializeField] private GameObject projectileTarget;
+
+    private int ownerConnectionIndex;
     private float timeIntervalResolution = 0.01f;
-    private LinkedList<Projectile> projectilesList;    
+    private LinkedList<Projectile> projectilesList;
+    private List<GameObject> projectileCurve;
+
+    public int OwnerConnectionIndex { get { return ownerConnectionIndex; } }    
 
     public float CalculateProjectileTime(Vector3 v, Vector3 g)
 	{
@@ -56,12 +62,26 @@ public class ProjectileHandler : MonoBehaviour
     public void Initialize(int ownerConnectionId)
     {
         projectilesList = new LinkedList<Projectile>();
-        this.ownerConnectionId = ownerConnectionId;
-        if (this.ownerConnectionId == LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value)
+        this.ownerConnectionIndex = ownerConnectionId;
+        if (this.ownerConnectionIndex == LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value)
         {
             // handle input here
             FGNetworkProgramming.Input.Instance.OnHandleKeyboardInput.AddListener(OnHandleKeyboardInput);
-        }                
+            projectileTarget.gameObject.SetActive(true);
+        }
+        else
+        {
+            projectileTarget.gameObject.SetActive(false);        
+        }
+        projectilePoint.gameObject.SetActive(false);
+
+        projectileCurve = new List<GameObject>();               
+        for(int i=0; i<20; i++)
+        {
+            var pp = Instantiate(projectilePoint, transform.position, Quaternion.identity, transform);            
+            projectileCurve.Add(pp);
+            pp.gameObject.SetActive(false);
+        }
     }
 
     void OnDestroy()
@@ -69,6 +89,50 @@ public class ProjectileHandler : MonoBehaviour
         FGNetworkProgramming.Input.Instance.OnHandleKeyboardInput.RemoveListener(OnHandleKeyboardInput);
     }
     
+    void Update()
+    {
+        if (ownerConnectionIndex != LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value) return;
+
+        var forwardDirection = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);        
+        var currentVelocity = forwardDirection * projectileForwardStrength + new Vector3(0, LocalGame.Instance.GameData.ProjectileUpStrength, 0);
+        
+        var tempPos = transform.position;
+        var tempTime = 0.0f;
+        var t = CalculateProjectileTime(currentVelocity, LocalGame.Instance.GameData.ProjectileGravity);
+        var finalPos = transform.position;
+        var targetPos = transform.position;
+        
+        int index=0;
+        int a = 0;
+        int n = Mathf.FloorToInt(t / timeIntervalResolution);
+        while (t > 0)
+        {
+            var intermediateVelocity = CalculateProjectileVelocity(currentVelocity, LocalGame.Instance.GameData.ProjectileGravity, tempTime);
+            finalPos += intermediateVelocity;            
+            if (a < n) targetPos += intermediateVelocity;
+
+            var newPos = tempPos + intermediateVelocity;
+            
+            tempPos += intermediateVelocity;
+            tempTime += timeIntervalResolution;
+            t -= timeIntervalResolution;                         
+            
+            if (a%3 == 0)
+            {
+                projectileCurve[index].transform.position = newPos;
+                projectileCurve[index].gameObject.SetActive(true);
+                index++;
+            }
+            a++;
+        }
+
+        projectileTarget.transform.position = targetPos;        
+        for(int i=index; i<projectileCurve.Count; i++)
+        {
+            projectileCurve[index].gameObject.SetActive(false);
+        }         
+    }
+
     void FixedUpdate()
     {
         var e = projectilesList.First;
@@ -111,12 +175,14 @@ public class ProjectileHandler : MonoBehaviour
                 break;
                 case EGameInput.A:                
                 normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection - (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                mesh.transform.forward = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
                 break;
                 case EGameInput.S:
                 projectileForwardStrength = Mathf.Clamp(projectileForwardStrength - (LocalGame.Instance.GameData.ForwardStrengthAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinForwardStrength, LocalGame.Instance.GameData.MaxForwardStrength);;
                 break;
                 case EGameInput.D:
                 normalizedForwardDirection = Mathf.Clamp(normalizedForwardDirection + (LocalGame.Instance.GameData.ForwardDirectionAdjustmentSpeed * Time.deltaTime), LocalGame.Instance.GameData.MinNormalizedDirection, LocalGame.Instance.GameData.MaxNormalizedDirection);
+                mesh.transform.forward = -Mathf.Sign(Vector3.Dot(transform.forward, Vector3.forward)) * Vector3.Slerp(transform.right, -transform.right, normalizedForwardDirection);
                 break;
             }
         }
@@ -129,7 +195,7 @@ public class ProjectileHandler : MonoBehaviour
         var currentVelocity = forwardDirection * projectileForwardStrength + new Vector3(0, LocalGame.Instance.GameData.ProjectileUpStrength, 0);
         
         Gizmos.color = Color.cyan;
-        Gizmos.DrawSphere(transform.position, 0.5f);
+        Gizmos.DrawWireSphere(transform.position, 0.25f);
         Gizmos.DrawLine(transform.position, transform.position + currentVelocity * 10);
         Gizmos.DrawLine(transform.position, transform.position + (forwardDirection * projectileForwardStrength));
         

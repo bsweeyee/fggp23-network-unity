@@ -43,7 +43,7 @@ public class Projectile : MonoBehaviour
         {
             // TODO: we calculate radial aoe to see who it hits. For client, we call any effects we want to display. For server, we inflict damage to objects
             Collider[] hs = Physics.OverlapSphere(transform.position, LocalGame.Instance.GameData.ProjectileRadius, LocalGame.Instance.GameData.UnitAttackableLayer);
-            Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value).ToArray();
+            Collider[] notOwnerHS = hs.Where( x=> (x.GetComponent<NetworkUnit>().OwnerConnectionIndexPlusOne.Value - 1) != projectileHandler.OwnerConnectionIndex).ToArray();
 
             foreach(var c in notOwnerHS)
             {

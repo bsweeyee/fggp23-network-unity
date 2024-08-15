@@ -17,6 +17,7 @@ public class GameView : MonoBehaviour,
     /// Assigned GameObjects in Editor
     /// </summary>
     [SerializeField] private List<Button> spawnUnitButtons;
+    [SerializeField] private Button fireButton;
     [SerializeField] private TMP_InputField customMessageInput;
     [SerializeField] private Button openMessageButton;
     [SerializeField] private Image healthAmountFill;
@@ -211,7 +212,7 @@ public class GameView : MonoBehaviour,
         networkGame.SpawnUnitRpc(LocalGame.Instance.MyNetworkGameInstance.ConnectionIndex.Value, spawnIndex);
     }
 
-    public void OnGameStatePlay(NetworkGame networkGame, int clientID)
+    public void OnGameStatePlay(NetworkGame networkGame, int myConnectionIndex)
     {              
         gameObject.SetActive(true);        
         int[] indices = new int[spawnUnitButtons.Count];
@@ -224,7 +225,7 @@ public class GameView : MonoBehaviour,
             spawnUnitButtons[i].onClick.RemoveAllListeners();
             spawnUnitButtons[i].onClick.AddListener(() => {
                 var x = index;
-                if (clientID%2 != 0) x = indices.Length - index - 1;
+                if (myConnectionIndex%2 != 0) x = indices.Length - index - 1;
                 lastSpawnRequestSendTime = Time.time;
                 OnSpawnUnit(networkGame, x);
                 foreach(var b in spawnUnitButtons)
@@ -237,12 +238,12 @@ public class GameView : MonoBehaviour,
 
         // reposition MessageViewCanvas to face the camera and also closer to camera view plane
         int interval = Mathf.FloorToInt(LocalGame.Instance.GameData.UnitSpawnPosition.Count / GameData.NUMBER_OF_PLAYERS);
-        int middleIndex = interval * clientID + (interval / 2);
+        int middleIndex = interval * myConnectionIndex + (interval / 2);
 
         messageViewCanvasInstance.transform.position = LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
-        messageViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[clientID];
+        messageViewCanvasInstance.transform.rotation = LocalGame.Instance.GameData.CameraRotation[myConnectionIndex];
 
-        Vector3 d = LocalGame.Instance.GameData.CameraSpawnPosition[clientID] - LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
+        Vector3 d = LocalGame.Instance.GameData.CameraSpawnPosition[myConnectionIndex] - LocalGame.Instance.GameData.UnitSpawnPosition[middleIndex];
         Vector3 projectedD = Vector3.Dot(d, -messageViewCanvasInstance.transform.forward) * -messageViewCanvasInstance.transform.forward;
                 
         messageViewCanvasInstance.transform.position += (projectedD * 0.9f);
@@ -330,6 +331,14 @@ public class GameView : MonoBehaviour,
             childTMP.text = LocalGame.Instance.GameData.Messages[i];
         }        
 
+        // initialize fire button
+        fireButton.onClick.RemoveAllListeners();
+        fireButton.onClick.AddListener(() => {
+            Debug.Log("fire index: " + myConnectionIndex);
+            var ph = LocalGame.Instance.ProjectileHandlers[myConnectionIndex];
+            ph.Spawn(myConnectionIndex);
+        });
+
         lastMessageSendTime = -1;
     }
 
@@ -355,6 +364,8 @@ public class GameView : MonoBehaviour,
         {
             playerHealthInstances.Value.ExitGamePlayState();
         }
+
+        fireButton.onClick.RemoveAllListeners();
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)
@@ -373,6 +384,8 @@ public class GameView : MonoBehaviour,
         {
             playerHealthInstances.Value.ExitGamePlayState();
         }
+
+        fireButton.onClick.RemoveAllListeners();
     }
 
     public void OnGameStateWin(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -396,6 +409,8 @@ public class GameView : MonoBehaviour,
         {
             playerHealthInstances.Value.ExitGamePlayState();
         }
+
+        fireButton.onClick.RemoveAllListeners();
     }
 
     public void OnGameStateLose(NetworkGame myNetworkGame, LocalGame myLocalGame)
@@ -420,6 +435,8 @@ public class GameView : MonoBehaviour,
         {
             playerHealthInstances.Value.ExitGamePlayState();
         }
+
+        fireButton.onClick.RemoveAllListeners();
     }
 
     public void OnMessageReceieved(string message, int ownerconnectionIndex)

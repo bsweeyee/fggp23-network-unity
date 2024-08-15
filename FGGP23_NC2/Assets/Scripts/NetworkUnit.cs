@@ -146,7 +146,7 @@ public class NetworkUnit : NetworkBehaviour
             {
                 if (Time.time - client_lastAttackTime > LocalGame.Instance.GameData.UnitAttackIntervalSeconds)
                 {                    
-                    ExecuteAttackRpc(targetUnitID);
+                    ExecuteUnitAttackRpc(targetUnitID);
                     targetUnitID = SelectAttackTarget();
                     if (targetUnitID >= int.MaxValue) ChangeState(ENetworkUnitState.MOVE);                                    
                     client_lastAttackTime = Time.time;
@@ -275,7 +275,7 @@ public class NetworkUnit : NetworkBehaviour
 
     #region SERVER RPCS
     [Rpc(SendTo.Server)]
-    public void ExecuteAttackRpc(int tUnitID)
+    public void ExecuteUnitAttackRpc(int tUnitID)
     {
         server_unitIDAttackRequestBuffer.Enqueue(tUnitID);               
     }

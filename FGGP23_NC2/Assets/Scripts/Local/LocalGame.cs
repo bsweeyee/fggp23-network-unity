@@ -56,7 +56,8 @@ namespace FGNetworkProgramming
         private LocalGameCamera mainCameraInstance;
         private GameView gameViewInstance;
         private GameObject backgroundInstance;
-        private List<GameSpawnHitArea> hitAreas; 
+        private List<GameSpawnHitArea> hitAreas;
+        private List<ProjectileHandler> projectileHandlers; 
 
         Dictionary<int, NetworkUnit> networkUnitInstances;
         List<NetworkGame> networkGameInstances;
@@ -91,6 +92,7 @@ namespace FGNetworkProgramming
             get { return networkUnitInstances; }
         }    
         public EGameState CurrentState { get { return currentGameState; } }
+        public List<ProjectileHandler> ProjectileHandlers { get { return projectileHandlers; } }
 
         public static LocalGame Instance 
         {
@@ -109,6 +111,7 @@ namespace FGNetworkProgramming
         void Awake()
         {
             hitAreas = new List<GameSpawnHitArea>();
+            projectileHandlers = new List<ProjectileHandler>();
 
             networkGameInstances = new List<NetworkGame>();
             networkUnitInstances = new Dictionary<int, NetworkUnit>();
@@ -305,6 +308,15 @@ namespace FGNetworkProgramming
             hitAreas.Clear();
         }
 
+        void ClearProjectileHandlers()
+        {
+            foreach(var ph in projectileHandlers)
+            {
+                Destroy(ph.gameObject);
+            }
+            projectileHandlers.Clear();
+        }
+
         public void ChangeState(EGameState newState)
         {
             if (newState == currentGameState) { Debug.LogWarning($"Game state already in {newState}\n skipping game state change..."); return; }
@@ -316,6 +328,7 @@ namespace FGNetworkProgramming
                 
                 ClearHitAreas();
                 ClearNetworkUnits();
+                ClearProjectileHandlers();
 
                 NetworkGameInstances.Clear();
                 MyNetworkGameInstance = null;
@@ -332,6 +345,7 @@ namespace FGNetworkProgramming
                 
                 ClearHitAreas();                
                 ClearNetworkUnits();
+                ClearProjectileHandlers();
 
                 var waitingStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateWaiting>();
                 foreach(var ni in waitingStateInterfaces)
@@ -349,6 +363,13 @@ namespace FGNetworkProgramming
                     GameSpawnHitArea a = Instantiate(GameData.HitAreaPrefab);
                     a.Initialize(i, GameData.UnitSpawnPosition[i], GameData.UnitSpawnRadius[i]);
                     hitAreas.Add(a);
+                }
+
+                for (int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)
+                {
+                    ProjectileHandler ph = Instantiate(GameData.ProjectileHandlerPrefab, GameData.PlayerSpawnPosition[i], GameData.PlayerSpawnRotation[i]);
+                    ph.Initialize(i);
+                    projectileHandlers.Add(ph);
                 }                                
                 
                 var playStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStatePlay>();
@@ -363,6 +384,7 @@ namespace FGNetworkProgramming
                 
                 ClearHitAreas();
                 ClearNetworkUnits();
+                ClearProjectileHandlers();
 
                 var winStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateWin>();
                 foreach(var ni in winStateInterfaces)
@@ -376,6 +398,7 @@ namespace FGNetworkProgramming
                 
                 ClearHitAreas();
                 ClearNetworkUnits();
+                ClearProjectileHandlers();
 
                 var loseStateInterfaces = FindObjectsOfType<MonoBehaviour>(true).OfType<IOnGameStateLose>();
                 foreach(var ni in loseStateInterfaces)
@@ -410,7 +433,7 @@ namespace FGNetworkProgramming
             for (int i=0; i< gameData.PlayerSpawnPosition.Count; i++)
             {
                 Handles.DrawSolidDisc(gameData.PlayerSpawnPosition[i], Vector3.up, 0.25f);                                    
-            }
+            }            
 
             Gizmos.color = Color.white;
             for (int i=0; i<GameData.NUMBER_OF_PLAYERS; i++)

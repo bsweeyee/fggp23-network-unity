@@ -21,7 +21,11 @@ namespace FGNetworkProgramming
         NONE,
         LEFT_MOUSE_BUTTON,
         RIGHT_MOUSE_BUTTON,
-        SPACE_KEY
+        SPACE_KEY,
+        W,
+        A,
+        S,
+        D
     }        
 
     public class Input : MonoBehaviour
@@ -75,6 +79,10 @@ namespace FGNetworkProgramming
             gameInputs.Add(EGameInput.LEFT_MOUSE_BUTTON, new TInputState(EGameInput.LEFT_MOUSE_BUTTON, EInputState.NONE));        
             gameInputs.Add(EGameInput.RIGHT_MOUSE_BUTTON, new TInputState(EGameInput.RIGHT_MOUSE_BUTTON, EInputState.NONE));        
             gameInputs.Add(EGameInput.SPACE_KEY, new TInputState(EGameInput.SPACE_KEY, EInputState.NONE));
+            gameInputs.Add(EGameInput.W, new TInputState(EGameInput.W, EInputState.NONE));
+            gameInputs.Add(EGameInput.A, new TInputState(EGameInput.A, EInputState.NONE));
+            gameInputs.Add(EGameInput.S, new TInputState(EGameInput.S, EInputState.NONE));
+            gameInputs.Add(EGameInput.D, new TInputState(EGameInput.D, EInputState.NONE));
 
             eventSystem = FindObjectOfType<EventSystem>();
         }
@@ -108,7 +116,8 @@ namespace FGNetworkProgramming
                     }
                     else
                     {
-                        OnHandleKeyboardInput?.Invoke(EGameInput.SPACE_KEY, EInputState.HOLD);
+                        OnHandleKeyboardInput?.Invoke(input, EInputState.HOLD);
+                        // Debug.Log("[" + input + "]:" + EInputState.HOLD);
                     }
                     gameInputs[input] = new TInputState(input, EInputState.HOLD);                                        
                 }
@@ -137,6 +146,10 @@ namespace FGNetworkProgramming
         {                                           
            HandleInputs(EGameInput.LEFT_MOUSE_BUTTON, mouse.leftButton.isPressed);
            HandleInputs(EGameInput.SPACE_KEY, keyboard.spaceKey.isPressed);
+           HandleInputs(EGameInput.W, keyboard.wKey.isPressed);
+           HandleInputs(EGameInput.A, keyboard.aKey.isPressed);
+           HandleInputs(EGameInput.S, keyboard.sKey.isPressed);
+           HandleInputs(EGameInput.D, keyboard.dKey.isPressed);
         }
     }
 }

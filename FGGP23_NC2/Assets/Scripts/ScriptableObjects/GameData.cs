@@ -46,11 +46,15 @@ namespace FGNetworkProgramming
         [Header("Game Assets / Prefabs")]
         [SerializeField] private List<Material> gameMaterials = new List<Material>();        
         [SerializeField] private GameObject backgroundPrefab;
-        [SerializeField] private GameSpawnHitArea hitAreaPrefab;        
+        [SerializeField] private GameSpawnHitArea hitAreaPrefab;
+        [SerializeField] private ProjectileHandler projectileHandlerPrefab;   
+        [SerializeField] private Projectile projectilePrefab;     
 
         public List<Material> GameMaterials { get { return gameMaterials; }}
         public GameObject BackgroundPrefab { get { return backgroundPrefab; }}
         public GameSpawnHitArea HitAreaPrefab { get { return hitAreaPrefab; }}
+        public ProjectileHandler ProjectileHandlerPrefab { get { return projectileHandlerPrefab; } }
+        public Projectile ProjectilePrefab { get { return projectilePrefab; } }
         #endregion        
 
         #region UI Prefabs
@@ -75,6 +79,7 @@ namespace FGNetworkProgramming
 
         [Header("Scene Settings")]
         [SerializeField] private List<Vector3> playerSpawnPosition = new List<Vector3>(new Vector3[NUMBER_OF_PLAYERS]);
+        [SerializeField] private List<Quaternion> playerSpawnRotaion = new List<Quaternion>(new Quaternion[2] { Quaternion.identity, Quaternion.identity });
 
         [SerializeField] private Vector3 cameraNonNetworkSpawnPosition = Vector3.zero;
         [SerializeField] private Quaternion cameraNonNetworkRotation = Quaternion.identity;
@@ -85,6 +90,7 @@ namespace FGNetworkProgramming
         [SerializeField] private List<Quaternion> cameraRotation = new List<Quaternion>(new Quaternion[2] { Quaternion.identity, Quaternion.identity } );
 
         public List<Vector3> PlayerSpawnPosition { get { return playerSpawnPosition; } }
+        public List<Quaternion> PlayerSpawnRotation { get { return playerSpawnRotaion; } }
 
         public Vector3 CameraNonNetworkSpawnPosition { get { return cameraNonNetworkSpawnPosition; } set { cameraNonNetworkSpawnPosition = value; } }
         public Quaternion CameraNonNetworkRotation { get { return cameraNonNetworkRotation; } set { cameraNonNetworkRotation= value; } }
@@ -111,6 +117,28 @@ namespace FGNetworkProgramming
         public float UnitAttackIntervalSeconds { get { return unitAttackIntervalSeconds; }}
         public float UnitAttackStrength { get { return unitAttackStrength; }}
         public LayerMask UnitAttackableLayer { get { return unitAttackableLayer; }}
+        #endregion
+    
+        #region Projectile Settings
+        
+        [SerializeField] private float minForwardStrength = 0.1f;
+        [SerializeField] private float maxForwardStrength = 0.2f;
+
+        [SerializeField] private float minNormalizedDirection = 0.35f;
+        [SerializeField] private float maxNormalizedDirection = 0.65f;
+
+        [SerializeField] private float projectileUpStrength = 0.2f;
+        [SerializeField] private Vector3 projectileGravity = new Vector3(0.0f, -1.0f, 0.0f);
+        
+        
+        public float MinForwardStrength { get { return minForwardStrength; } }
+        public float MaxForwardStrength { get { return maxForwardStrength; } 
+        }
+        public float MinNormalizedDirection { get { return minNormalizedDirection; } }
+        public float MaxNormalizedDirection { get { return maxNormalizedDirection; } }
+        
+        public float ProjectileUpStrength { get { return projectileUpStrength; } }
+        public Vector3 ProjectileGravity { get { return projectileGravity; } }
         #endregion
     }
 }

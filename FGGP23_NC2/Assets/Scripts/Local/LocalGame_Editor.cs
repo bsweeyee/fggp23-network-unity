@@ -12,6 +12,7 @@ namespace FGNetworkProgramming
     public class LocalGame_Editor : Editor
     {
         private bool bIsDisplayPlayerSpawnPosition;
+        private bool bIsDisplayPlayerRotation;
         private bool bIsDisplaySpawnPosition;
         private bool bDisplayNonNetworkCameraPosition;
         private bool bIsDisplayCameraPosition;
@@ -45,6 +46,34 @@ namespace FGNetworkProgramming
                             lg.GameData.PlayerSpawnPosition[i] = newPos;
                             SerializeGameData(lg.GameData);
                         }                       
+                    }
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bIsDisplayPlayerRotation = EditorGUILayout.Toggle(bIsDisplayPlayerRotation, GUILayout.Width(15));                
+                EditorGUILayout.LabelField("Player Spawn Rotation", EditorStyles.miniBoldLabel);
+            }
+            if (bIsDisplayPlayerRotation)
+            {
+                for (int i=0; i< lg.GameData.PlayerSpawnRotation.Count; i++)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField(i.ToString(), GUILayout.Width(10));
+                        
+                        var newEuler = EditorGUILayout.Vector3Field("", lg.GameData.PlayerSpawnRotation[i].eulerAngles);
+                        if (newEuler != lg.GameData.PlayerSpawnRotation[i].eulerAngles)
+                        {
+                            lg.GameData.PlayerSpawnRotation[i] = Quaternion.Euler(newEuler);
+                            SerializeGameData(lg.GameData);
+                        }
+                                            
+                        if (GUILayout.Button("Reset"))
+                        {
+                            lg.GameData.PlayerSpawnRotation[i] = Quaternion.identity;
+                        }                        
                     }
                 }
             }
@@ -220,6 +249,24 @@ namespace FGNetworkProgramming
                         }                    
                     }
                     GUI.color = oldColor;
+                }
+
+                if (bIsDisplayPlayerRotation)
+                {
+
+                    for (int i=0; i<lg.GameData.PlayerSpawnRotation.Count; i++)
+                    {
+                        Quaternion newQuat = Handles.RotationHandle(lg.GameData.PlayerSpawnRotation[i], lg.GameData.PlayerSpawnPosition[i]);
+                        Vector3 forward = newQuat * Vector3.forward;                        
+                        Handles.color = Color.blue;
+                        Handles.DrawLine(lg.GameData.PlayerSpawnPosition[i], lg.GameData.PlayerSpawnPosition[i] + forward.normalized * 5);                        
+
+                        if (newQuat != lg.GameData.PlayerSpawnRotation[i])
+                        {
+                            lg.GameData.PlayerSpawnRotation[i] = newQuat;
+                            Repaint();
+                        }                        
+                    }
                 }
 
                 if (bIsDisplaySpawnPosition)

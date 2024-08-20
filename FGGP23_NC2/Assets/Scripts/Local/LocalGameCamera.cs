@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using FGNetworkProgramming;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class LocalGameCamera : MonoBehaviour, IOnGameStatePlay, IOnGameStateStart, IOnGameStateWaiting
 {
@@ -11,6 +12,8 @@ public class LocalGameCamera : MonoBehaviour, IOnGameStatePlay, IOnGameStateStar
     {
         get { return gameCamera; }
     }
+
+    static Material lineMaterial;
 
     public void Initialize(LocalGame lg)
     {
@@ -33,5 +36,5 @@ public class LocalGameCamera : MonoBehaviour, IOnGameStatePlay, IOnGameStateStar
     {
         transform.position = LocalGame.Instance.GameData.CameraNonNetworkSpawnPosition;
         transform.rotation = LocalGame.Instance.GameData.CameraNonNetworkRotation;
-    }
+    }            
 }

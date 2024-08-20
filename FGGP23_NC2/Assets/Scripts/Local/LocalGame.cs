@@ -151,11 +151,19 @@ namespace FGNetworkProgramming
             //         }
             //         break;
             //     }
-            // });            
-
+            // });
+           
             ChangeState(EGameState.START);
-        }
+        }        
         
+        void Update()
+        {
+            using (new Draw.PrimitiveScope())
+            {                
+                Draw.Primitive.Disc(Vector3.zero, Vector3.up, 5);
+            }
+        }
+
         void OnEnable() 
         {
             Application.logMessageReceived += HandleLog;

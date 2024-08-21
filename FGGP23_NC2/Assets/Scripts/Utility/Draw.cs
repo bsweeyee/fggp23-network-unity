@@ -105,13 +105,15 @@ namespace Draw
             
             Matrix4x4 m = new Matrix4x4();
 
-            Vector3 r = Vector3.Cross(primitiveData.Normal.normalized, Vector3.up.normalized);
-            Vector3 f = Vector3.Cross(primitiveData.Normal.normalized, r.normalized);
-            r = r.normalized;
-            f = f.normalized;
+            Vector3 u = primitiveData.Normal.normalized;            
+            Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;           
 
+            // m.SetColumn(0, new Vector4(Vector3.right.x, Vector3.right.y, Vector3.right.z, 0));                
+            // m.SetColumn(1, new Vector4(Vector3.up.x, Vector3.up.y, Vector3.up.z, 0));                
+            // m.SetColumn(2, new Vector4(Vector3.forward.x, Vector3.forward.y, Vector3.forward.z, 0));                
             m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
-            m.SetColumn(1, new Vector4(primitiveData.Normal.x, primitiveData.Normal.y, primitiveData.Normal.z, 0));                
+            m.SetColumn(1, new Vector4(u.x, u.y, u.z, 0));                
             m.SetColumn(2, new Vector4(f.x, f.y, f.z, 0));                
             m.SetColumn(3, new Vector4(0, 0, 0, 1));
 
@@ -124,12 +126,14 @@ namespace Draw
                 float a0 = (i-1) / (float)iterations;
                 float a1 = i / (float)iterations;
                 float angle0 = a0 * Mathf.PI * 2;
-                float angle1 = a1 * Mathf.PI * 2;                                                
+                float angle1 = a1 * Mathf.PI * 2;
 
-                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * primitiveData.Radius, Mathf.Sin(angle0) * primitiveData.Radius, 0);
-                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * primitiveData.Radius, Mathf.Sin(angle1) * primitiveData.Radius, 0);                                                
-
-                Primitive.Line(primitiveData.Start + p0, primitiveData.Start + p1); 
+                Vector3 p0 = new Vector3(Mathf.Cos(angle0) * primitiveData.Radius, Mathf.Sin(angle0) * primitiveData.Radius, 0);
+                Vector3 p1 = new Vector3(Mathf.Cos(angle1) * primitiveData.Radius, Mathf.Sin(angle1) * primitiveData.Radius, 0);                                                
+                
+                GL.Color(primitiveData.Color);            
+                GL.Vertex3(primitiveData.Start.x + p0.x, primitiveData.Start.y + p0.y, primitiveData.Start.z + p0.z);            
+                GL.Vertex3(primitiveData.Start.x + p1.x, primitiveData.Start.y + p1.y, primitiveData.Start.z + p1.z);                
             }
 
             GL.End();
@@ -138,23 +142,20 @@ namespace Draw
 
         void OnPostRenderCallback(Camera camera)
         {
-            if (camera == Camera.main)
+            while (DrawCommands.Count > 0)
             {
-                while (DrawCommands.Count > 0)
+                TPrimitive drawCommand = DrawCommands.Dequeue();
+                switch(drawCommand.PrimitiveID)
                 {
-                    TPrimitive drawCommand = DrawCommands.Dequeue();
-                    switch(drawCommand.PrimitiveID)
-                    {
-                        case EPrimitive.LINE:
-                        DrawLine(drawCommand);
-                        break;
-                        case EPrimitive.LINE2D:
-                        DrawLine2D(drawCommand);
-                        break;
-                        case EPrimitive.DISC:
-                        DrawDisc(drawCommand);
-                        break;
-                    }
+                    case EPrimitive.LINE:
+                    DrawLine(drawCommand);
+                    break;
+                    case EPrimitive.LINE2D:
+                    DrawLine2D(drawCommand);
+                    break;
+                    case EPrimitive.DISC:
+                    DrawDisc(drawCommand);
+                    break;
                 }
             }
             DrawCommands.Clear();

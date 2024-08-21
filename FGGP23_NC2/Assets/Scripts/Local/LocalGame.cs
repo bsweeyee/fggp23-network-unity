@@ -66,6 +66,7 @@ namespace FGNetworkProgramming
         #region GUI variables
         private bool bIsShowLog = false;
         private bool bIsShowDebug = false;
+        [SerializeField][Range(0, 1)] private float normal = 1.0f;
         Queue logQueue = new Queue();
         #endregion
 
@@ -158,9 +159,10 @@ namespace FGNetworkProgramming
         
         void Update()
         {
+            Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, normal);
             using (new Draw.PrimitiveScope())
             {                
-                Draw.Primitive.Disc(Vector3.zero, Vector3.up, 5);
+                Draw.Primitive.Disc(Vector3.zero, u, 5);
             }
         }
 
@@ -473,6 +475,15 @@ namespace FGNetworkProgramming
                 Gizmos.DrawSphere(gameData.CameraSpawnPosition[i], 0.25f);
             }
 
+            Vector3 s = Vector3.Lerp(Vector3.right, Vector3.up, normal);
+            Vector3 u = s.normalized;            
+            Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;           
+
+            Gizmos.DrawLine(transform.position, transform.position + u * 5);
+            Gizmos.DrawLine(transform.position, transform.position + f * 5);
+            Gizmos.DrawLine(transform.position, transform.position + r * 5);
+           
             if (Application.isPlaying)
             {
                 if (NetworkGameInstances != null)

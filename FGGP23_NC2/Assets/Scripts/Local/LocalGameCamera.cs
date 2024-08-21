@@ -22,14 +22,14 @@ public class LocalGameCamera : MonoBehaviour, IOnGameStatePlay, IOnGameStateStar
 
     public void OnGameStatePlay(NetworkGame game, int connectionIndex)
     {
-        transform.position = LocalGame.Instance.GameData.CameraSpawnPosition[connectionIndex];
-        transform.rotation = LocalGame.Instance.GameData.CameraRotation[connectionIndex];
+        // transform.position = LocalGame.Instance.GameData.CameraSpawnPosition[connectionIndex];
+        // transform.rotation = LocalGame.Instance.GameData.CameraRotation[connectionIndex];
     }
 
     public void OnGameStateStart(LocalGame game)
     {
-        transform.position = LocalGame.Instance.GameData.CameraNonNetworkSpawnPosition;
-        transform.rotation = LocalGame.Instance.GameData.CameraNonNetworkRotation;
+        // transform.position = LocalGame.Instance.GameData.CameraNonNetworkSpawnPosition;
+        // transform.rotation = LocalGame.Instance.GameData.CameraNonNetworkRotation;
     }
 
     public void OnGameStateWaiting(NetworkGame myNetworkGame, LocalGame game)

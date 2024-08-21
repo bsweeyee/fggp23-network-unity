@@ -217,7 +217,8 @@ namespace FGNetworkProgramming
                         }
                     }
                 }
-            }
+            }        
+
         }        
         
         protected virtual void OnSceneGUI()        

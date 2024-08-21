@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Draw
+namespace IMDraw
 {
     public enum EPrimitive
     {
@@ -13,6 +13,7 @@ namespace Draw
         DISC
     }
 
+    // TODO: at some point, look into how to separate different data struct for different types of primitive draw
     public struct TPrimitive
     {
         public EPrimitive PrimitiveID;
@@ -45,7 +46,7 @@ namespace Draw
     public class PrimitiveScope: System.IDisposable
     {                
         public static Queue<TPrimitive> DrawCommands = new Queue<TPrimitive>();         
-        public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("Hidden/Internal-Colored"));
+        public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("Hidden/IMDrawLine"));
         
         public PrimitiveScope()
         {            
@@ -108,28 +109,26 @@ namespace Draw
             Vector3 u = primitiveData.Normal.normalized;            
             Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
             Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;           
-
-            // m.SetColumn(0, new Vector4(Vector3.right.x, Vector3.right.y, Vector3.right.z, 0));                
-            // m.SetColumn(1, new Vector4(Vector3.up.x, Vector3.up.y, Vector3.up.z, 0));                
-            // m.SetColumn(2, new Vector4(Vector3.forward.x, Vector3.forward.y, Vector3.forward.z, 0));                
+                            
+            
             m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
-            m.SetColumn(1, new Vector4(u.x, u.y, u.z, 0));                
-            m.SetColumn(2, new Vector4(f.x, f.y, f.z, 0));                
+            m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
+            m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
             m.SetColumn(3, new Vector4(0, 0, 0, 1));
 
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);
             GL.Begin(GL.LINES);
             
-            for(int i=1; i<iterations; ++i)
+            for(int i=1; i<iterations+1; ++i)
             {
-                float a0 = (i-1) / (float)iterations;
-                float a1 = i / (float)iterations;
+                float a0 = (i-1) / (float)iterations+1;
+                float a1 = i / (float)iterations+1;
                 float angle0 = a0 * Mathf.PI * 2;
                 float angle1 = a1 * Mathf.PI * 2;
 
-                Vector3 p0 = new Vector3(Mathf.Cos(angle0) * primitiveData.Radius, Mathf.Sin(angle0) * primitiveData.Radius, 0);
-                Vector3 p1 = new Vector3(Mathf.Cos(angle1) * primitiveData.Radius, Mathf.Sin(angle1) * primitiveData.Radius, 0);                                                
+                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * primitiveData.Radius, Mathf.Sin(angle0) * primitiveData.Radius, 0);
+                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * primitiveData.Radius, Mathf.Sin(angle1) * primitiveData.Radius, 0);                                                
                 
                 GL.Color(primitiveData.Color);            
                 GL.Vertex3(primitiveData.Start.x + p0.x, primitiveData.Start.y + p0.y, primitiveData.Start.z + p0.z);            
@@ -193,6 +192,11 @@ namespace Draw
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, color));
+        }
+
+        public static void Disc(Vector3 center, Vector3 normal, float radius, Color color)
+        {            
             PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, color));
         }
     }

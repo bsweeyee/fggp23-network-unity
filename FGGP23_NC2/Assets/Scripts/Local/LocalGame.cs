@@ -160,10 +160,11 @@ namespace FGNetworkProgramming
         void Update()
         {
             Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, normal);
-            using (new Draw.PrimitiveScope())
+            using (new IMDraw.PrimitiveScope())
             {                
-                Draw.Primitive.Disc(Vector3.zero, u, 5);
+                IMDraw.Primitive.Disc(transform.position, u, 5);
             }
+            IMDraw.Primitive.Line(transform.position, transform.position + u.normalized * 2);
         }
 
         void OnEnable() 
@@ -474,11 +475,33 @@ namespace FGNetworkProgramming
             {
                 Gizmos.DrawSphere(gameData.CameraSpawnPosition[i], 0.25f);
             }
-
+            
+            Matrix4x4 m = new Matrix4x4();            
             Vector3 s = Vector3.Lerp(Vector3.right, Vector3.up, normal);
             Vector3 u = s.normalized;            
             Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
-            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;           
+            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;
+
+            m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
+            m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
+            m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
+            m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+            int iterations = 100;
+            float radius = 5;
+
+            for(int i=1; i<iterations+1; ++i)
+            {
+                float a0 = (i-1) / (float)iterations+1;
+                float a1 = i / (float)iterations+1;
+                float angle0 = a0 * Mathf.PI * 2;
+                float angle1 = a1 * Mathf.PI * 2;
+
+                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * radius, Mathf.Sin(angle0) * radius, 0);
+                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * radius, Mathf.Sin(angle1) * radius, 0);                                                
+                
+                Gizmos.DrawLine(transform.position + p0, transform.position + p1);
+            }           
 
             Gizmos.DrawLine(transform.position, transform.position + u * 5);
             Gizmos.DrawLine(transform.position, transform.position + f * 5);

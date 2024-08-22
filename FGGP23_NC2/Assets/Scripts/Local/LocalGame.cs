@@ -66,7 +66,8 @@ namespace FGNetworkProgramming
         #region GUI variables
         private bool bIsShowLog = false;
         private bool bIsShowDebug = false;
-        [SerializeField][Range(0, 1)] private float normal = 1.0f;
+        [SerializeField][Range(0, 1)] private float n1 = 1.0f;
+        [SerializeField][Range(0, 1)] private float n2 = 1.0f;
         Queue logQueue = new Queue();
         #endregion
 
@@ -159,12 +160,12 @@ namespace FGNetworkProgramming
         
         void Update()
         {
-            Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, normal);
+            Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, n1);
             using (new IMDraw.PrimitiveScope())
             {                
-                IMDraw.Primitive.Disc(transform.position, u, 5);
+                // IMDraw.Primitive.Disc(transform.position, u, 5);
+                IMDraw.Primitive.Line(transform.position, transform.position + u.normalized * 4);
             }
-            IMDraw.Primitive.Line(transform.position, transform.position + u.normalized * 2);
         }
 
         void OnEnable() 
@@ -475,37 +476,48 @@ namespace FGNetworkProgramming
             {
                 Gizmos.DrawSphere(gameData.CameraSpawnPosition[i], 0.25f);
             }
-            
-            Matrix4x4 m = new Matrix4x4();            
-            Vector3 s = Vector3.Lerp(Vector3.right, Vector3.up, normal);
-            Vector3 u = s.normalized;            
-            Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
-            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;
 
-            m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
-            m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
-            m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
-            m.SetColumn(3, new Vector4(0, 0, 0, 1));
+            Vector3 u0 = Vector3.Lerp(Vector3.right, Vector3.forward, n1);
+            Vector3 u1 = Vector3.Lerp(u0.normalized, Vector3.up, n2);
+            Vector3 u2 = (u0.normalized + u1.normalized).normalized;
+            Vector3 start = transform.position;
+            Vector3 end =  transform.position + u2.normalized * 4;
+            float radius = 0.5f;
 
-            int iterations = 100;
-            float radius = 5;
+            Vector3 l = end - start;
+            Vector3 L = Vector3.ProjectOnPlane(l, Vector3.up);
+            Vector3 h = l - L;
 
-            for(int i=1; i<iterations+1; ++i)
-            {
-                float a0 = (i-1) / (float)iterations+1;
-                float a1 = i / (float)iterations+1;
-                float angle0 = a0 * Mathf.PI * 2;
-                float angle1 = a1 * Mathf.PI * 2;
+            Vector3 A = start + L + Vector3.Cross(l, L).normalized * radius;
+            Vector3 B = start + L + Vector3.Cross(L, l).normalized * radius;
+            Vector3 C = start + L + h + Vector3.Cross(L, l).normalized * radius;
+            Vector3 D = start + L + h + Vector3.Cross(l, L).normalized * radius;
+            Vector3 E = start + h + Vector3.Cross(L, l).normalized * radius;
+            Vector3 F = start + h + Vector3.Cross(l, L).normalized * radius;
+            Vector3 G = start + Vector3.Cross(l, L).normalized * radius;
+            Vector3 H = start + Vector3.Cross(L, l).normalized * radius;
 
-                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * radius, Mathf.Sin(angle0) * radius, 0);
-                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * radius, Mathf.Sin(angle1) * radius, 0);                                                
-                
-                Gizmos.DrawLine(transform.position + p0, transform.position + p1);
-            }           
+            Gizmos.DrawSphere(A, 0.05f);           
+            Gizmos.DrawSphere(B, 0.05f);           
+            Gizmos.DrawSphere(C, 0.05f);           
+            Gizmos.DrawSphere(D, 0.05f);           
+            Gizmos.DrawSphere(E, 0.05f);           
+            Gizmos.DrawSphere(F, 0.05f);           
+            Gizmos.DrawSphere(G, 0.05f);           
+            Gizmos.DrawSphere(H, 0.05f);
+            Handles.DrawWireDisc(start, u2, radius);            
+            Handles.DrawWireDisc(end, u2, radius);            
 
-            Gizmos.DrawLine(transform.position, transform.position + u * 5);
-            Gizmos.DrawLine(transform.position, transform.position + f * 5);
-            Gizmos.DrawLine(transform.position, transform.position + r * 5);
+            Handles.Label(A, "A");
+            Handles.Label(B, "B");
+            Handles.Label(C, "C");
+            Handles.Label(D, "D");
+            Handles.Label(E, "E");
+            Handles.Label(F, "F");
+            Handles.Label(G, "G");
+            Handles.Label(H, "H");
+
+            Gizmos.DrawLine(start, end);           
            
             if (Application.isPlaying)
             {

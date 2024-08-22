@@ -69,15 +69,35 @@ namespace IMDraw
 
         void DrawLine(TPrimitive primitiveData)
         {
+            float radius = 0.1f;
             DefaultPrimitiveMaterial.SetPass(0);
+            DefaultPrimitiveMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
+            DefaultPrimitiveMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
+            DefaultPrimitiveMaterial.SetFloat("_Radius", radius);
 
+            // TODO: Generate 3D AABB of a line
+            Vector3 l = primitiveData.End - primitiveData.Start;
+            Vector3 L = Vector3.ProjectOnPlane(l, Vector3.up);
+            Vector3 h = l - L;
+
+            Vector3 A = primitiveData.Start + L + Vector3.Cross(l, L).normalized * radius;
+            Vector3 B = primitiveData.Start + L + Vector3.Cross(L, l).normalized * radius;
+            Vector3 C = primitiveData.Start + L + h + Vector3.Cross(L, l).normalized * radius;
+            Vector3 D = primitiveData.Start + L + h + Vector3.Cross(l, L).normalized * radius;
+            Vector3 E = primitiveData.Start + h + Vector3.Cross(L, l).normalized * radius;
+            Vector3 F = primitiveData.Start + h + Vector3.Cross(l, L).normalized * radius;
+            Vector3 G = primitiveData.Start + Vector3.Cross(l, L).normalized * radius;
+            Vector3 H = primitiveData.Start + Vector3.Cross(L, l).normalized * radius;
+            
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);
-            GL.Begin(GL.LINES);            
+            GL.Begin(GL.TRIANGLES);            
+            // GL.Begin(GL.LINES);            
 
-            GL.Color(primitiveData.Color);            
-            GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);            
-            GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);            
+            GL.Color(primitiveData.Color);                                    
+                       
+            // GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);            
+            // GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);            
 
             GL.End();
             GL.PopMatrix();
@@ -118,7 +138,7 @@ namespace IMDraw
 
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);
-            GL.Begin(GL.LINES);
+            GL.Begin(GL.LINE_STRIP);
             
             for(int i=1; i<iterations+1; ++i)
             {

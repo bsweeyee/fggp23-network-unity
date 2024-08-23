@@ -2,7 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using System.Linq;
 using Unity.Networking.Transport.Relay;
 
@@ -65,9 +67,7 @@ namespace FGNetworkProgramming
 
         #region GUI variables
         private bool bIsShowLog = false;
-        private bool bIsShowDebug = false;
-        [SerializeField][Range(0, 1)] private float n1 = 1.0f;
-        [SerializeField][Range(0, 1)] private float n2 = 1.0f;
+        private bool bIsShowDebug = false;        
         Queue logQueue = new Queue();
         #endregion
 
@@ -157,17 +157,7 @@ namespace FGNetworkProgramming
            
             ChangeState(EGameState.START);
         }        
-        
-        void Update()
-        {
-            Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, n1);
-            using (new IMDraw.PrimitiveScope())
-            {                
-                // IMDraw.Primitive.Disc(transform.position, u, 5);
-                IMDraw.Primitive.Line(transform.position, transform.position + u.normalized * 4);
-            }
-        }
-
+                
         void OnEnable() 
         {
             Application.logMessageReceived += HandleLog;
@@ -476,49 +466,7 @@ namespace FGNetworkProgramming
             {
                 Gizmos.DrawSphere(gameData.CameraSpawnPosition[i], 0.25f);
             }
-
-            Vector3 u0 = Vector3.Lerp(Vector3.right, Vector3.forward, n1);
-            Vector3 u1 = Vector3.Lerp(u0.normalized, Vector3.up, n2);
-            Vector3 u2 = (u0.normalized + u1.normalized).normalized;
-            Vector3 start = transform.position;
-            Vector3 end =  transform.position + u2.normalized * 4;
-            float radius = 0.5f;
-
-            Vector3 l = end - start;
-            Vector3 L = Vector3.ProjectOnPlane(l, Vector3.up);
-            Vector3 h = l - L;
-
-            Vector3 A = start + L + Vector3.Cross(l, L).normalized * radius;
-            Vector3 B = start + L + Vector3.Cross(L, l).normalized * radius;
-            Vector3 C = start + L + h + Vector3.Cross(L, l).normalized * radius;
-            Vector3 D = start + L + h + Vector3.Cross(l, L).normalized * radius;
-            Vector3 E = start + h + Vector3.Cross(L, l).normalized * radius;
-            Vector3 F = start + h + Vector3.Cross(l, L).normalized * radius;
-            Vector3 G = start + Vector3.Cross(l, L).normalized * radius;
-            Vector3 H = start + Vector3.Cross(L, l).normalized * radius;
-
-            Gizmos.DrawSphere(A, 0.05f);           
-            Gizmos.DrawSphere(B, 0.05f);           
-            Gizmos.DrawSphere(C, 0.05f);           
-            Gizmos.DrawSphere(D, 0.05f);           
-            Gizmos.DrawSphere(E, 0.05f);           
-            Gizmos.DrawSphere(F, 0.05f);           
-            Gizmos.DrawSphere(G, 0.05f);           
-            Gizmos.DrawSphere(H, 0.05f);
-            Handles.DrawWireDisc(start, u2, radius);            
-            Handles.DrawWireDisc(end, u2, radius);            
-
-            Handles.Label(A, "A");
-            Handles.Label(B, "B");
-            Handles.Label(C, "C");
-            Handles.Label(D, "D");
-            Handles.Label(E, "E");
-            Handles.Label(F, "F");
-            Handles.Label(G, "G");
-            Handles.Label(H, "H");
-
-            Gizmos.DrawLine(start, end);           
-           
+            
             if (Application.isPlaying)
             {
                 if (NetworkGameInstances != null)

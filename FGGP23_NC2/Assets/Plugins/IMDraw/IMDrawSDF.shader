@@ -1,6 +1,6 @@
 // Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
 
-Shader "Hidden/IMDrawLine"
+Shader "Hidden/IMDrawSDF"
 {
     Properties
     {
@@ -115,7 +115,7 @@ Shader "Hidden/IMDrawLine"
                 }                
                 // float rm = raymarch(worldPosition, viewDirection);  
                 float rm = raymarchCapsule(worldPosition, _LineStart, _LineEnd, _Radius, viewDirection);              
-                if (rm <= 0) discard;                
+                // if (rm <= 0) discard;                
                 return rm;
                 // return i.color;
             }

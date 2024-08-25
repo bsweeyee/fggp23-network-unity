@@ -68,11 +68,11 @@ public class ProjectileHandler : MonoBehaviour
         {
             // handle input here
             FGNetworkProgramming.Input.Instance.OnHandleKeyboardInput.AddListener(OnHandleKeyboardInput);
-            projectileTarget.gameObject.SetActive(true);
+            // projectileTarget.gameObject.SetActive(true);
         }
         else
         {
-            projectileTarget.gameObject.SetActive(false);        
+            // projectileTarget.gameObject.SetActive(false);        
         }
         projectilePoint.gameObject.SetActive(false);
 
@@ -114,6 +114,8 @@ public class ProjectileHandler : MonoBehaviour
         int index=0;
         int a = 0;
         int n = Mathf.FloorToInt(t / timeIntervalResolution);
+        
+        Vector3 lastPos = finalPos;
         while (t > 0)
         {
             var intermediateVelocity = CalculateProjectileVelocity(currentVelocity, LocalGame.Instance.GameData.ProjectileGravity, tempTime);
@@ -121,25 +123,38 @@ public class ProjectileHandler : MonoBehaviour
             if (a < n) targetPos += intermediateVelocity;
 
             var newPos = tempPos + intermediateVelocity;
-            
+            if (a%3 == 0)
+            {
+                using (new IMDraw.PrimitiveScope())
+                {
+                    IMDraw.Primitive.LineSDF(lastPos, newPos, 0.05f);
+                }
+                lastPos = tempPos;
+            }
+
             tempPos += intermediateVelocity;
             tempTime += timeIntervalResolution;
             t -= timeIntervalResolution;                         
             
-            if (a%3 == 0)
-            {
-                projectileCurve[index].transform.position = newPos;
-                projectileCurve[index].gameObject.SetActive(true);
-                index++;
-            }
+            // if (a%3 == 0)
+            // {                                                                
+            //     projectileCurve[index].transform.position = newPos;
+            //     projectileCurve[index].gameObject.SetActive(true);
+            //     index++;
+            // }
             a++;
         }
 
-        projectileTarget.transform.position = targetPos;        
-        for(int i=index; i<projectileCurve.Count; i++)
+        using(new IMDraw.PrimitiveScope())
         {
-            projectileCurve[index].gameObject.SetActive(false);
-        }         
+            IMDraw.Primitive.Disc(lastPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius);
+        }
+
+        // projectileTarget.transform.position = targetPos;        
+        // for(int i=index; i<projectileCurve.Count; i++)
+        // {
+        //     projectileCurve[index].gameObject.SetActive(false);
+        // }         
     }
 
     void FixedUpdate()

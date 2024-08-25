@@ -10,7 +10,8 @@ namespace IMDraw
         LINE_SDF,
         LINE,
         LINE2D,
-        DISC
+        DISC,
+        DISC_SDF
     }
 
     // TODO: at some point, look into how to separate different data struct for different types of primitive draw
@@ -93,6 +94,7 @@ namespace IMDraw
             float offset = 1.0f;
             float radius = primitiveData.Radius;
             DefaultSDFPrimitiveMaterial.SetPass(0);
+            DefaultSDFPrimitiveMaterial.SetInt("_Type", 0);
             DefaultSDFPrimitiveMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
             DefaultSDFPrimitiveMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
             DefaultSDFPrimitiveMaterial.SetFloat("_Radius", radius);
@@ -312,6 +314,11 @@ namespace IMDraw
             GL.End();
             GL.PopMatrix();
         }        
+
+        void DrawSDFDisc(TPrimitive primitiveData)
+        {
+
+        }
 
         void OnPostRenderCallback(Camera camera)
         {

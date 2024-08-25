@@ -27,8 +27,8 @@ public class IMDrawDemo : MonoBehaviour
         using (new IMDraw.PrimitiveScope())
         {                
             // IMDraw.Primitive.Disc(transform.position, u, 5);
-            // IMDraw.Primitive.LineSDF(transform.position, transform.position + u1.normalized * length, radius);
-            IMDraw.Primitive.Line(transform.position, transform.position + u1.normalized * length);
+            IMDraw.Primitive.LineSDF(transform.position, transform.position + u1.normalized * length, radius);
+            // IMDraw.Primitive.Line(transform.position, transform.position + u1.normalized * length);
         }
     }    
 

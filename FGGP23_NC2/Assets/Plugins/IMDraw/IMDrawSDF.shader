@@ -11,6 +11,8 @@ Shader "Hidden/IMDrawSDF"
         _ZTest ("ZTest", Int) = 4.0 // LEqual
         _Cull ("Cull", Int) = 0.0 // Off
         _ZBias ("ZBias", Float) = 0.0
+
+        _Type("Type", Int) = 0
         _LineStart("LineStart", Vector) = (0,0,0,1)
         _LineEnd("LineEnd", Vector) = (0,0,0,1)
         _Radius("Radius", Float) = 1.0
@@ -52,10 +54,17 @@ Shader "Hidden/IMDrawSDF"
             fixed4 _LineStart;
             fixed4 _LineEnd;
             float _Radius;
+            int _Type;
 
             float sphereDistance (float3 p)
             {
                 return distance(p,_LineStart.xyz) - _Radius;
+            }
+
+            float torusDistance(float3 p, float2 t)
+            {
+                float2 q = float2(length(p.xz - t.x), p.y);
+                return length(q) - t.y;
             }
 
             float capsuleDistance(float3 p, float3 a, float3 b, float r)
@@ -64,28 +73,22 @@ Shader "Hidden/IMDrawSDF"
                 float3 ba = b - a;
                 float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
                 return length(pa - ba*h) - r;               
-            }
-            
-            fixed4 raymarch(float3 position, float3 direction)
-            {
-                for (int i=0; i<STEPS; i++)
-                {
-                    float distance = sphereDistance(position);
-                    if (distance < MIN_DISTANCE)
-                    {
-                        // return i / (float) STEPS;
-                        return 1;
-                    }                                                       
-                    position += direction * distance;
-                }
-                return 0;
-            }
+            }                    
 
-            bool raymarchCapsule(float3 position, float3 start, float3 end, float radius, float3 direction)
+            bool raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
             {
                 for (int i=0; i<STEPS; i++)
                 {
-                    float distance = capsuleDistance(position, start, end, radius);
+                    float distance = 0;
+                    if (_Type == 0)
+                    {
+                        distance = capsuleDistance(position, start, end, radius);
+                    }
+                    else
+                    {
+                        float2 t = float2(radius, 0.1);                                                
+                        distance = torusDistance(position, t);
+                    }
                     if (distance < MIN_DISTANCE)
                     {
                         return 1;
@@ -113,8 +116,8 @@ Shader "Hidden/IMDrawSDF"
                 {
                     viewDirection = mul((float3x3)unity_CameraToWorld, float3(0,0,1));
                 }                
-                // float rm = raymarch(worldPosition, viewDirection);  
-                float rm = raymarchCapsule(worldPosition, _LineStart, _LineEnd, _Radius, viewDirection);              
+                
+                float rm = raymarch(worldPosition, _LineStart, _LineEnd, _Radius, viewDirection);              
                 if (rm <= 0) discard;                
                 return rm;
                 // return i.color;

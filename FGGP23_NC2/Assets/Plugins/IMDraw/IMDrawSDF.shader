@@ -115,7 +115,7 @@ Shader "Hidden/IMDrawSDF"
                 }                
                 // float rm = raymarch(worldPosition, viewDirection);  
                 float rm = raymarchCapsule(worldPosition, _LineStart, _LineEnd, _Radius, viewDirection);              
-                // if (rm <= 0) discard;                
+                if (rm <= 0) discard;                
                 return rm;
                 // return i.color;
             }

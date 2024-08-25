@@ -8,6 +8,7 @@ namespace IMDraw
     public enum EPrimitive
     {
         LINE_SDF,
+        LINE,
         LINE2D,
         DISC
     }
@@ -59,33 +60,27 @@ namespace IMDraw
         public static Material DefaultSDFPrimitiveMaterial = new Material(Shader.Find("Hidden/IMDrawSDF"));
         public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("Hidden/IMDraw"));
 
-        public static float Offset = 1.0f;        
-        public PrimitiveScope(bool useSDF = true)
+        public PrimitiveScope()
         {            
             Camera.onPostRender += OnPostRenderCallback; //NOTE: onPostRender will add delegate to SceneCamera if the tab is also opened
 
-            if (useSDF)
-            {
-                DefaultSDFPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
-                // Turn on alpha blending
-                DefaultSDFPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                DefaultSDFPrimitiveMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                // Turn backface culling off
-                DefaultSDFPrimitiveMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-                // Turn off depth writes
-                DefaultSDFPrimitiveMaterial.SetInt("_ZWrite", 0);                    
-            }
-            else
-            {
-                DefaultPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
-                // Turn on alpha blending
-                DefaultPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                DefaultPrimitiveMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                // Turn backface culling off
-                DefaultPrimitiveMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-                // Turn off depth writes
-                DefaultPrimitiveMaterial.SetInt("_ZWrite", 0);                    
-            }
+            DefaultSDFPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
+            // Turn on alpha blending
+            DefaultSDFPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            DefaultSDFPrimitiveMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            // Turn backface culling off
+            DefaultSDFPrimitiveMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            // Turn off depth writes
+            DefaultSDFPrimitiveMaterial.SetInt("_ZWrite", 0);
+
+            DefaultPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
+            // Turn on alpha blending
+            DefaultPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            DefaultPrimitiveMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            // Turn backface culling off
+            DefaultPrimitiveMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            // Turn off depth writes
+            DefaultPrimitiveMaterial.SetInt("_ZWrite", 0);            
         }
 
         public void Dispose()
@@ -95,6 +90,7 @@ namespace IMDraw
 
         void DrawSDFLine(TPrimitive primitiveData)
         {
+            float offset = 1.0f;
             float radius = primitiveData.Radius;
             DefaultSDFPrimitiveMaterial.SetPass(0);
             DefaultSDFPrimitiveMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
@@ -102,41 +98,86 @@ namespace IMDraw
             DefaultSDFPrimitiveMaterial.SetFloat("_Radius", radius);
 
             // TODO: Generate 3D AABB of a line
-            Vector3 l = primitiveData.End - primitiveData.Start;
-            // Matrix4x4 r = new Matrix4x4();
-            // r.SetColumn(0, new Vector4(1, 0, 0, 0));
-            // r.SetColumn(1, new Vector4(0, 0, 1, 0));
-            // r.SetColumn(2, new Vector4(0, -1, 0, 0));
-            // r.SetColumn(3, new Vector4(0, 0, 0, 1));
-            // Vector3 lr = r * l;
+            Vector3 start = primitiveData.Start;
+            Vector3 end = primitiveData.End;
+            Vector3 l = end - start;
+            float length = l.magnitude;
 
             Vector3 L = Vector3.ProjectOnPlane(l, Vector3.up);
-            Vector3 h = l - L;
+            float lDotRNormalized = Vector3.Dot(L.normalized, Vector3.right);
+            float lDotFNormalized = Vector3.Dot(L.normalized, Vector3.forward);
+            float lDotUNormalized = Vector3.Dot(l.normalized, Vector3.up);
 
-            Vector3 A = primitiveData.Start + L + Vector3.Cross(l, L).normalized * radius * Offset;
-            Vector3 B = primitiveData.Start + L + Vector3.Cross(L, l).normalized * radius * Offset;
-            Vector3 C = primitiveData.Start + L + h + Vector3.Cross(L, l).normalized * radius * Offset + l.normalized * radius;
-            Vector3 D = primitiveData.Start + L + h + Vector3.Cross(l, L).normalized * radius * Offset + l.normalized * radius;
-            Vector3 E = primitiveData.Start + h + Vector3.Cross(L, l).normalized * radius * Offset;
-            Vector3 F = primitiveData.Start + h + Vector3.Cross(l, L).normalized * radius * Offset;
-            Vector3 G = primitiveData.Start + Vector3.Cross(l, L).normalized * radius * Offset - l.normalized * radius;
-            Vector3 H = primitiveData.Start + Vector3.Cross(L, l).normalized * radius * Offset - l.normalized * radius;
-                                    
+            Vector3 Lr = Vector3.Dot(L, Vector3.right) * Vector3.right;
+            Vector3 Lf = Vector3.Dot(L, Vector3.forward) * Vector3.forward;
+            Vector3 Lh = l - L;
+
+            Vector3 A = (lDotRNormalized > 0) ? start : start + Lr;
+            Vector3 B = (lDotRNormalized > 0) ? start + Lr : start;
+            Vector3 C = (lDotRNormalized > 0) ? start + Lr + Lh : start + Lh;
+            Vector3 D = (lDotRNormalized > 0) ? start + Lh : start + Lr + Lh;
+            Vector3 E = (lDotRNormalized > 0) ? start + Lf + Lr + Lh : start + Lf + Lh;
+            Vector3 F = (lDotRNormalized > 0) ? start + Lf + Lh : start + Lf + Lr + Lh;
+            Vector3 G = (lDotRNormalized > 0) ? start + Lf : start + Lf + Lr;
+            Vector3 H = (lDotRNormalized > 0) ? start + Lf + Lr : start + Lf;
+
+            A = (lDotFNormalized > 0) ? A : A + Lf;
+            B = (lDotFNormalized > 0) ? B : B + Lf;
+            C = (lDotFNormalized > 0) ? C : C + Lf;
+            D = (lDotFNormalized > 0) ? D : D + Lf;
+
+            E = (lDotFNormalized > 0) ? E : E - Lf;
+            F = (lDotFNormalized > 0) ? F : F - Lf;
+            G = (lDotFNormalized > 0) ? G : G - Lf;
+            H = (lDotFNormalized > 0) ? H : H - Lf;
+
+            A = (lDotUNormalized > 0) ? A : A + Lh;
+            B = (lDotUNormalized > 0) ? B : B + Lh;
+            C = (lDotUNormalized > 0) ? C : C - Lh;       
+            D = (lDotUNormalized > 0) ? D : D - Lh;       
+            
+            E = (lDotUNormalized > 0) ? E : E - Lh;
+            F = (lDotUNormalized > 0) ? F : F - Lh;
+            G = (lDotUNormalized > 0) ? G : G + Lh;       
+            H = (lDotUNormalized > 0) ? H : H + Lh;
+
+            Vector3 center = start + Lr/2 + Lf/2 + Lh/2;
+            Vector3 A_direction = (A - center).normalized;
+            Vector3 B_direction = (B - center).normalized;
+            Vector3 C_direction = (C - center).normalized;
+            Vector3 D_direction = (D - center).normalized;
+            Vector3 E_direction = (E - center).normalized;
+            Vector3 F_direction = (F - center).normalized;
+            Vector3 G_direction = (G - center).normalized;
+            Vector3 H_direction = (H - center).normalized;
+
+            A += A_direction * radius* offset;                
+            B += B_direction * radius* offset;                
+            C += C_direction * radius* offset;                
+            D += D_direction * radius* offset;                
+            E += E_direction * radius* offset;                
+            F += F_direction * radius* offset;                
+            G += G_direction * radius* offset;                
+            H += H_direction * radius* offset;
+
+            float rIV = (lDotRNormalized > 0) ? Vector3Extension.InverseLerp(Vector3.right * length, Vector3.zero, Lr) : Vector3Extension.InverseLerp(-Vector3.right * length, Vector3.zero, Lr);
+            float fIV = (lDotFNormalized > 0) ? Vector3Extension.InverseLerp(Vector3.forward * length, Vector3.zero, Lf) : Vector3Extension.InverseLerp(-Vector3.forward * length, Vector3.zero, Lf);
+            float uIV = (lDotUNormalized > 0) ? Vector3Extension.InverseLerp(Vector3.up * length, Vector3.zero, Lh) : Vector3Extension.InverseLerp(-Vector3.up * length, Vector3.zero, Lh);
+
+            A = A - fIV * Vector3.forward * radius - Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
+            B = B - fIV * Vector3.forward * radius + Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
+            C = C - fIV * Vector3.forward * radius + Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius + uIV * Vector3.up * radius;
+            D = D - fIV * Vector3.forward * radius - Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius + uIV * Vector3.up * radius;
+            E = E + fIV * Vector3.forward * radius + Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius + uIV * Vector3.up * radius;
+            F = F + fIV * Vector3.forward * radius - Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius + uIV * Vector3.up * radius;
+            G = G + fIV * Vector3.forward * radius - Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
+            H = H + fIV * Vector3.forward * radius + Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
+
             GL.PushMatrix();
-            GL.MultMatrix(Matrix4x4.identity);
-            
-            // DEBUG draw a thin line
-            // GL.Begin(GL.LINES);                        
-            // GL.Color(Color.white); 
-            
-            // GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);
-            // GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);
-            
-            // GL.End();            
+            GL.MultMatrix(Matrix4x4.identity);                   
             
             // draw the bounding mesh
-            GL.Begin(GL.TRIANGLES);            
-            // GL.Begin(GL.LINES); 
+            GL.Begin(GL.TRIANGLES);                         
             GL.Color(primitiveData.Color);                                    
 
             // Front face
@@ -201,6 +242,22 @@ namespace IMDraw
             GL.PopMatrix();
         }
 
+        void DrawLine(TPrimitive primitiveData)
+        {
+            DefaultPrimitiveMaterial.SetPass(0);
+            GL.PushMatrix();
+            GL.MultMatrix(Matrix4x4.identity);
+
+            GL.Begin(GL.LINES);
+            GL.Color(primitiveData.Color);
+
+            GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);
+            GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);                        
+            
+            GL.End();
+            GL.PopMatrix();
+        }
+
         void DrawLine2D(TPrimitive primitiveData)
         {
             DefaultPrimitiveMaterial.SetPass(0);
@@ -224,7 +281,7 @@ namespace IMDraw
             
             Matrix4x4 m = new Matrix4x4();
 
-            Vector3 u = primitiveData.Normal.normalized;            
+            Vector3 u = primitiveData.Normal.normalized;
             Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
             Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
             
@@ -266,6 +323,9 @@ namespace IMDraw
                     case EPrimitive.LINE_SDF:
                     DrawSDFLine(drawCommand);
                     break;
+                    case EPrimitive.LINE:
+                    DrawLine(drawCommand);
+                    break;
                     case EPrimitive.LINE2D:
                     DrawLine2D(drawCommand);
                     break;
@@ -281,16 +341,28 @@ namespace IMDraw
 
     public class Primitive
     {        
-        public static void Line(Vector3 start, Vector3 end, float width, string colorString = "#000000")
+        public static void LineSDF(Vector3 start, Vector3 end, float width, string colorString = "#000000")
         {
             Color color;
-            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);           
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
             PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
         }
 
-        public static void Line(Vector3 start, Vector3 end, float width, Color color)
-        {            
+        public static void LineSDF(Vector3 start, Vector3 end, float width, Color color)
+        {
             PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
+        }
+
+        public static void Line(Vector3 start, Vector3 end, string colorString = "#000000")
+        {
+            Color color;
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE, start, end, color));
+        }
+
+        public static void Line(Vector3 start, Vector3 end, Color color)
+        {
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE, start, end, color));
         }
 
         public static void Line2D(Vector3 screenSpaceStart, Vector3 screenSpaceEnd, string colorString = "#000000")

@@ -344,10 +344,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075fb6fce0b5d24e95e08ba5f8664dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  n1: 1
-  n2: 1
-  radius: 1
+  isInvertForward: 0
+  n1: 0.5
+  n2: 0.5
+  radius: 0.47
   offset: 1
+  length: 2.49
 --- !u!20 &283181304917420265
 Camera:
   m_ObjectHideFlags: 0

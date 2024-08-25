@@ -1,6 +1,6 @@
 // Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
 
-Shader "Hidden/IMDraw"
+Shader "IMDraw/IMDrawCapsuleSDF"
 {
     Properties
     {
@@ -11,8 +11,10 @@ Shader "Hidden/IMDraw"
         _ZTest ("ZTest", Int) = 4.0 // LEqual
         _Cull ("Cull", Int) = 0.0 // Off
         _ZBias ("ZBias", Float) = 0.0
-        _LineStart("LineStart", Vector) = (0,0,0,1)
-        _LineEnd("LineEnd", Vector) = (0,0,0,1)
+
+        _Start("LineStart", Vector) = (0,0,0,1)
+        _End("LineEnd", Vector) = (0,0,0,1)
+        _Radius("Radius", Float) = 1.0
     }
 
     SubShader
@@ -47,7 +49,33 @@ Shader "Hidden/IMDraw"
                 float3 worldPosition : TEXCOORD1;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
-            float4 _Color;                   
+            float4 _Color;
+            fixed4 _Start;
+            fixed4 _End;
+            float _Radius;
+           
+            float capsuleDistance(float3 p, float3 a, float3 b, float r)
+            {
+                float3 pa = p - a;
+                float3 ba = b - a;
+                float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
+                return length(pa - ba*h) - r;               
+            }                    
+
+            bool raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
+            {
+                for (int i=0; i<STEPS; i++)
+                {                                        
+                    float distance = capsuleDistance(position, start, end, radius);
+                    
+                    if (distance < MIN_DISTANCE)
+                    {
+                        return 1;
+                    }
+                    position += direction * distance;
+                }
+                return 0;
+            }
 
             v2f vert (appdata_t v)
             {
@@ -55,12 +83,23 @@ Shader "Hidden/IMDraw"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                o.worldPosition = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.color = v.color * _Color;
                 return o;
             }
             fixed4 frag (v2f i) : SV_Target
-            {                
-                return i.color;
+            {
+                float3 worldPosition = i.worldPosition;
+                float3 viewDirection = normalize(i.worldPosition - _WorldSpaceCameraPos);                
+                if (unity_OrthoParams.w > 0.01)
+                {
+                    viewDirection = mul((float3x3)unity_CameraToWorld, float3(0,0,1));
+                }                
+                
+                float rm = raymarch(worldPosition, _Start, _End, _Radius, viewDirection);              
+                if (rm <= 0) discard;                
+                return rm;
+                // return i.color;
             }
             ENDCG
         }

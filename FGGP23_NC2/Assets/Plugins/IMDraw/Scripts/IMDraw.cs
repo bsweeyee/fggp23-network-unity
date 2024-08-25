@@ -58,21 +58,22 @@ namespace IMDraw
     public class PrimitiveScope: System.IDisposable
     {                
         public static Queue<TPrimitive> DrawCommands = new Queue<TPrimitive>();         
-        public static Material DefaultSDFPrimitiveMaterial = new Material(Shader.Find("Hidden/IMDrawSDF"));
-        public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("Hidden/IMDraw"));
+        public static Material DefaultLineSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawCapsuleSDF"));
+        public static Material DefaultTorusSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawTorusSDF"));
+        public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("IMDraw/IMDrawDefault"));
 
         public PrimitiveScope()
         {            
             Camera.onPostRender += OnPostRenderCallback; //NOTE: onPostRender will add delegate to SceneCamera if the tab is also opened
 
-            DefaultSDFPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
+            DefaultLineSDFMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
-            DefaultSDFPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            DefaultSDFPrimitiveMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            DefaultLineSDFMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            DefaultLineSDFMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             // Turn backface culling off
-            DefaultSDFPrimitiveMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            DefaultLineSDFMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
             // Turn off depth writes
-            DefaultSDFPrimitiveMaterial.SetInt("_ZWrite", 0);
+            DefaultLineSDFMaterial.SetInt("_ZWrite", 0);
 
             DefaultPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
@@ -93,11 +94,11 @@ namespace IMDraw
         {
             float offset = 1.0f;
             float radius = primitiveData.Radius;
-            DefaultSDFPrimitiveMaterial.SetPass(0);
-            DefaultSDFPrimitiveMaterial.SetInt("_Type", 0);
-            DefaultSDFPrimitiveMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
-            DefaultSDFPrimitiveMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
-            DefaultSDFPrimitiveMaterial.SetFloat("_Radius", radius);
+            DefaultLineSDFMaterial.SetPass(0);
+            DefaultLineSDFMaterial.SetInt("_Type", 0);
+            DefaultLineSDFMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
+            DefaultLineSDFMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
+            DefaultLineSDFMaterial.SetFloat("_Radius", radius);
 
             // TODO: Generate 3D AABB of a line
             Vector3 start = primitiveData.Start;
@@ -317,7 +318,29 @@ namespace IMDraw
 
         void DrawSDFDisc(TPrimitive primitiveData)
         {
+            DefaultTorusSDFMaterial.SetPass(0);
 
+            Matrix4x4 m = new Matrix4x4();
+
+            Vector3 u = primitiveData.Normal.normalized;
+            Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
+            
+            m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
+            m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
+            m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
+            m.SetColumn(3, new Vector4(0, 0, 0, 1));            
+            DefaultTorusSDFMaterial.SetMatrix("_RotationMatrix", Matrix4x4.Inverse(m));
+
+            GL.PushMatrix();
+            GL.MultMatrix(Matrix4x4.identity);
+            GL.Begin(GL.LINE_STRIP);
+                       
+            GL.Color(primitiveData.Color);
+
+           
+            GL.End();
+            GL.PopMatrix();
         }
 
         void OnPostRenderCallback(Camera camera)

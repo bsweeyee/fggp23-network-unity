@@ -18,6 +18,9 @@ public class IMDrawDemo : MonoBehaviour
     [SerializeField][Range(0, 10)] private float radius = 1.0f;
     [SerializeField][Range(0, 10)] private float length = 1.0f;
 
+    [SerializeField][Range(0, 1)] private float discNormal = 1.0f;
+    [SerializeField] private MeshRenderer discRenderer;    
+
     void Update()
     {
         UnityEngine.Vector3 forward = (isInvertForward) ? -UnityEngine.Vector3.forward : UnityEngine.Vector3.forward;
@@ -29,6 +32,21 @@ public class IMDrawDemo : MonoBehaviour
             // IMDraw.Primitive.Disc(transform.position, u, 5);
             IMDraw.Primitive.LineSDF(transform.position, transform.position + u1.normalized * length, radius);
             // IMDraw.Primitive.Line(transform.position, transform.position + u1.normalized * length);
+        }
+
+        Vector3 u = Vector3.Lerp(Vector3.right, Vector3.up, discNormal);
+        Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+        Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
+        
+        Matrix4x4 m  = new Matrix4x4();
+        m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
+        m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
+        m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
+        m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+        if (discRenderer != null)
+        {
+            discRenderer.material.SetMatrix("_RotationMatrix", Matrix4x4.Inverse(m));
         }
     }    
 

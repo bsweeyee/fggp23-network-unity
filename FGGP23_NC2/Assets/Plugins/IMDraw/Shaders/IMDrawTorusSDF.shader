@@ -1,6 +1,6 @@
 // Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
 
-Shader "Hidden/IMDrawSDF"
+Shader "IMDraw/IMDrawTorusSDF"
 {
     Properties
     {
@@ -11,11 +11,10 @@ Shader "Hidden/IMDrawSDF"
         _ZTest ("ZTest", Int) = 4.0 // LEqual
         _Cull ("Cull", Int) = 0.0 // Off
         _ZBias ("ZBias", Float) = 0.0
-
-        _Type("Type", Int) = 0
-        _LineStart("LineStart", Vector) = (0,0,0,1)
-        _LineEnd("LineEnd", Vector) = (0,0,0,1)
-        _Radius("Radius", Float) = 1.0
+        
+        _MajorRadius("MajorRadius", Float) = 1.0
+        _MinorRadius("MinorRadius", Float) = 0.5
+        _Normal("Normal", Vector) = (0,0,0,1) 
     }
 
     SubShader
@@ -51,44 +50,23 @@ Shader "Hidden/IMDrawSDF"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
             float4 _Color;
-            fixed4 _LineStart;
-            fixed4 _LineEnd;
-            float _Radius;
-            int _Type;
-
-            float sphereDistance (float3 p)
-            {
-                return distance(p,_LineStart.xyz) - _Radius;
-            }
-
+            float _MajorRadius;
+            float _MinorRadius; 
+            float3 _Normal;
+            float4x4 _RotationMatrix; // TODO: Find a way to apply rotation to torus SDF                                   
+            
             float torusDistance(float3 p, float2 t)
             {
-                float2 q = float2(length(p.xz - t.x), p.y);
+                float2 q = float2(length(p.xz) - t.x, p.y);
                 return length(q) - t.y;
-            }
+            }                            
 
-            float capsuleDistance(float3 p, float3 a, float3 b, float r)
-            {
-                float3 pa = p - a;
-                float3 ba = b - a;
-                float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
-                return length(pa - ba*h) - r;               
-            }                    
-
-            bool raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
+            bool raymarch(float3 position, float majorRadius, float minorRadius, float3 direction)
             {
                 for (int i=0; i<STEPS; i++)
-                {
-                    float distance = 0;
-                    if (_Type == 0)
-                    {
-                        distance = capsuleDistance(position, start, end, radius);
-                    }
-                    else
-                    {
-                        float2 t = float2(radius, 0.1);                                                
-                        distance = torusDistance(position, t);
-                    }
+                {                                        
+                    float2 t = float2(majorRadius, minorRadius);                                                
+                    float distance = torusDistance(position, t);                    
                     if (distance < MIN_DISTANCE)
                     {
                         return 1;
@@ -111,13 +89,14 @@ Shader "Hidden/IMDrawSDF"
             fixed4 frag (v2f i) : SV_Target
             {
                 float3 worldPosition = i.worldPosition;
+                // float3 worldPosition = mul(_RotationMatrix, float4(i.worldPosition, 1)).xyz;
                 float3 viewDirection = normalize(i.worldPosition - _WorldSpaceCameraPos);                
                 if (unity_OrthoParams.w > 0.01)
                 {
                     viewDirection = mul((float3x3)unity_CameraToWorld, float3(0,0,1));
                 }                
                 
-                float rm = raymarch(worldPosition, _LineStart, _LineEnd, _Radius, viewDirection);              
+                float rm = raymarch(worldPosition, _MajorRadius, _MinorRadius, viewDirection);              
                 if (rm <= 0) discard;                
                 return rm;
                 // return i.color;

@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: IMDraw
+  m_Name: IMDrawSDFLine
   m_Shader: {fileID: 4800000, guid: 42695e2e43255634496a063c904deaaf, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -73,10 +73,11 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Radius: 0.01
+    - _Radius: 0.1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
+    - _Type: 1
     - _UVSec: 0
     - _ZBias: 0
     - _ZTest: 4
@@ -84,6 +85,8 @@ Material:
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _End: {r: 1, g: 0, b: 0, a: 1}
     - _LineEnd: {r: 1, g: 0, b: 1, a: 0}
     - _LineStart: {r: 0, g: 0, b: 0, a: 0}
+    - _Start: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []

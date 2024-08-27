@@ -62,7 +62,7 @@ Shader "IMDraw/IMDrawCapsuleSDF"
                 return length(pa - ba*h) - r;               
             }                    
 
-            bool raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
+            float raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
             {
                 for (int i=0; i<STEPS; i++)
                 {                                        
@@ -97,7 +97,7 @@ Shader "IMDraw/IMDrawCapsuleSDF"
                 }                
                 
                 float rm = raymarch(worldPosition, _Start, _End, _Radius, viewDirection);              
-                if (rm <= 0) discard;                
+                // if (rm <= 0) discard;                
                 return rm;
                 // return i.color;
             }

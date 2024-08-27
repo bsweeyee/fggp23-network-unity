@@ -66,6 +66,7 @@ namespace IMDraw
         {            
             Camera.onPostRender += OnPostRenderCallback; //NOTE: onPostRender will add delegate to SceneCamera if the tab is also opened
 
+            // SDF Capsule material setting
             DefaultLineSDFMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
             DefaultLineSDFMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -74,7 +75,18 @@ namespace IMDraw
             DefaultLineSDFMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
             // Turn off depth writes
             DefaultLineSDFMaterial.SetInt("_ZWrite", 0);
+            
+            // SDF Torus material setting
+            DefaultTorusSDFMaterial.hideFlags = HideFlags.HideAndDontSave;
+            // Turn on alpha blending
+            DefaultTorusSDFMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            DefaultTorusSDFMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            // Turn backface culling off
+            DefaultTorusSDFMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            // Turn off depth writes
+            DefaultTorusSDFMaterial.SetInt("_ZWrite", 0);
 
+            // Default material setting
             DefaultPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
             DefaultPrimitiveMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -95,7 +107,6 @@ namespace IMDraw
             float offset = 1.0f;
             float radius = primitiveData.Radius;
             DefaultLineSDFMaterial.SetPass(0);
-            DefaultLineSDFMaterial.SetInt("_Type", 0);
             DefaultLineSDFMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
             DefaultLineSDFMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
             DefaultLineSDFMaterial.SetFloat("_Radius", radius);
@@ -329,7 +340,14 @@ namespace IMDraw
             m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
             m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
             m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
-            m.SetColumn(3, new Vector4(0, 0, 0, 1));            
+            m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+            // m.SetColumn(0, new Vector4(1, 0, 0, 0));                
+            // m.SetColumn(1, new Vector4(0, 1, 0, 0));                
+            // m.SetColumn(2, new Vector4(0, 0, 1, 0));                
+            // m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+            // m = Matrix4x4.identity;            
             DefaultTorusSDFMaterial.SetMatrix("_RotationMatrix", Matrix4x4.Inverse(m));
 
             GL.PushMatrix();

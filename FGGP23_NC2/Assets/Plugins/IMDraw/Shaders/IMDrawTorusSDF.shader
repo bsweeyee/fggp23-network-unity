@@ -14,7 +14,6 @@ Shader "IMDraw/IMDrawTorusSDF"
         
         _MajorRadius("MajorRadius", Float) = 1.0
         _MinorRadius("MinorRadius", Float) = 0.5
-        _Normal("Normal", Vector) = (0,0,0,1) 
     }
 
     SubShader
@@ -52,9 +51,10 @@ Shader "IMDraw/IMDrawTorusSDF"
             };
             float4 _Color;
             float _MajorRadius;
-            float _MinorRadius; 
-            float3 _Normal;
+            float _MinorRadius;
+            float3 _Start; 
             float4x4 _InverseTransformMatrix; // TODO: Find a way to apply rotation to torus SDF                                   
+            float4x4 _TranslationMatrix;
             
             float torusDistance(float3 p, float2 t)
             {
@@ -99,6 +99,7 @@ Shader "IMDraw/IMDrawTorusSDF"
             {
                 float3 worldPosition = i.worldPosition;                
                 worldPosition = mul(_InverseTransformMatrix, float4(worldPosition, 1)).xyz;
+                worldPosition = mul(_TranslationMatrix, float4(worldPosition, 1)).xyz;
                 
                 float3 viewDirection = normalize(i.worldPosition - _WorldSpaceCameraPos);                
                 if (unity_OrthoParams.w > 0.01)

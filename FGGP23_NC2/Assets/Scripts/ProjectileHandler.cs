@@ -147,7 +147,7 @@ public class ProjectileHandler : MonoBehaviour
 
         using(new IMDraw.PrimitiveScope())
         {
-            IMDraw.Primitive.Disc(lastPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius);
+            IMDraw.Primitive.DiscSDF(lastPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius, 0.05f);
         }
 
         // projectileTarget.transform.position = targetPos;        

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace IMDraw
@@ -22,6 +23,7 @@ namespace IMDraw
         public Vector3 End;
         public Vector3 Normal;
         public float Radius;
+        public float MinorRadius;
         public Color Color;
 
         public TPrimitive(EPrimitive id, Vector3 start, Vector3 end, Color color)
@@ -32,6 +34,7 @@ namespace IMDraw
             this.Color = color;
             this.Normal = Vector3.zero;
             this.Radius = 0;
+            this.MinorRadius = 0;
         }
 
         public TPrimitive(EPrimitive id, Vector3 start, Vector3 end, Vector3 normal, float radius, Color color)
@@ -42,9 +45,10 @@ namespace IMDraw
             this.Color = color;
             this.Normal = normal;
             this.Radius = radius;
+            this.MinorRadius = 0;
         }
 
-        public TPrimitive(EPrimitive id, Vector3 start, Vector3 normal, float radius, Color color)
+        public TPrimitive(EPrimitive id, Vector3 start, Vector3 normal, float radius, float minorRadius, Color color)
         {
             this.PrimitiveID = id;
             this.Start = start;
@@ -52,7 +56,8 @@ namespace IMDraw
             this.Color = color;
             this.Normal = normal;
             this.Radius = radius;
-        }        
+            this.MinorRadius = minorRadius;
+        }            
     }
 
     public class PrimitiveScope: System.IDisposable
@@ -332,32 +337,114 @@ namespace IMDraw
             DefaultTorusSDFMaterial.SetPass(0);
 
             Matrix4x4 m = new Matrix4x4();
+            Matrix4x4 mt = new Matrix4x4();
 
             Vector3 u = primitiveData.Normal.normalized;
             Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
             Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
             
             m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
-            m.SetColumn(1, new Vector4(f.x, f.y, f.z, 0));                
-            m.SetColumn(2, new Vector4(u.x, u.y, u.z, 0));                
+            m.SetColumn(1, new Vector4(u.x, u.y, u.z, 0));                
+            m.SetColumn(2, new Vector4(f.x, f.y, f.z, 0));                
             m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+            mt.SetColumn(0, new Vector4(1, 0, 0, 0));
+            mt.SetColumn(1, new Vector4(0, 1, 0, 0));
+            mt.SetColumn(2, new Vector4(0, 0, 1, 0));
+            mt.SetColumn(3, new Vector4(-primitiveData.Start.x, -primitiveData.Start.y, -primitiveData.Start.z, 1));
+
+            Vector3 start = primitiveData.Start;
+            float radius = primitiveData.Radius;
+            float minorRadius = primitiveData.MinorRadius;
+            float offset = (radius + minorRadius) * 1.0f;
+
+            Vector3 A = start + Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 B = start + Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;
+            Vector3 C = start + Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 D = start + Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            
+            Vector3 E = start - Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 F = start - Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            Vector3 G = start - Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 H = start - Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;
 
             // m.SetColumn(0, new Vector4(1, 0, 0, 0));                
             // m.SetColumn(1, new Vector4(0, 1, 0, 0));                
             // m.SetColumn(2, new Vector4(0, 0, 1, 0));                
             // m.SetColumn(3, new Vector4(0, 0, 0, 1));
 
-            // m = Matrix4x4.identity;            
-            DefaultTorusSDFMaterial.SetMatrix("_RotationMatrix", Matrix4x4.Inverse(m));
+            // m = Matrix4x4.identity;
+            DefaultTorusSDFMaterial.SetFloat("_MajorRadius", radius);            
+            DefaultTorusSDFMaterial.SetFloat("_MinorRadius", minorRadius);            
+            DefaultTorusSDFMaterial.SetMatrix("_InverseTransformMatrix", Matrix4x4.Inverse(m));
+            DefaultTorusSDFMaterial.SetMatrix("_TranslationMatrix", mt);
 
             GL.PushMatrix();
-            GL.MultMatrix(Matrix4x4.identity);
-            GL.Begin(GL.LINE_STRIP);
-                       
-            GL.Color(primitiveData.Color);
+            GL.MultMatrix(Matrix4x4.identity);                   
+            
+            // draw the bounding mesh
+            GL.Begin(GL.TRIANGLES);                         
+            GL.Color(primitiveData.Color);                                    
 
-           
+            // Front face
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(D.x, D.y, D.z);           
+            GL.Vertex3(C.x, C.y, C.z);
+
+            // Left face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(H.x, H.y, H.z);
+                       
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(H.x, H.y, H.z);
+
+            // Right face
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(H.x, H.y, H.z);           
+            
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(F.x, F.y, F.z);           
+            GL.Vertex3(G.x, G.y, G.z);
+
+            // Back face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(F.x, F.y, F.z);
+
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(G.x, G.y, G.z);           
+            
+            // Top Face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(F.x, F.y, F.z);
+            GL.Vertex3(E.x, E.y, E.z);           
+
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(E.x, E.y, E.z);
+
+            // Bottom Face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(H.x, H.y, H.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+                       
+            // GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);            
+            // GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);            
+
             GL.End();
+
             GL.PopMatrix();
         }
 
@@ -379,6 +466,9 @@ namespace IMDraw
                     break;
                     case EPrimitive.DISC:
                     DrawDisc(drawCommand);
+                    break;
+                    case EPrimitive.DISC_SDF:
+                    DrawSDFDisc(drawCommand);
                     break;
                 }
             }
@@ -429,12 +519,24 @@ namespace IMDraw
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, color));
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, 0, color));
         }
 
         public static void Disc(Vector3 center, Vector3 normal, float radius, Color color)
         {            
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, color));
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, 0, color));
+        }
+
+        public static void DiscSDF(Vector3 center, Vector3 normal, float radius, float minorRadius, string colorString = "#000000")
+        {
+            Color color;
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
+        }
+
+        public static void DiscSDF(Vector3 center, Vector3 normal, float radius, float minorRadius, Color color)
+        {            
+            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
         }
     }
 }

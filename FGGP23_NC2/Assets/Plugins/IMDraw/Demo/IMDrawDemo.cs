@@ -4,8 +4,6 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.VisualScripting;
 
-
-
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -23,6 +21,7 @@ public class IMDrawDemo : MonoBehaviour
     [SerializeField][Range(0, 1)] private float n1 = 1.0f;
     [SerializeField][Range(0, 1)] private float n2 = 1.0f;
     [SerializeField][Range(0, 10)] private float radius = 1.0f;
+    [SerializeField][Range(0, 10)] private float minorRadius = 0.1f;
     [SerializeField][Range(0, 10)] private float length = 1.0f;
     
     [SerializeField] private MeshRenderer discRenderer;    
@@ -43,18 +42,10 @@ public class IMDrawDemo : MonoBehaviour
             break;
             case EDrawType.TORUS:
             Vector3 u = u1;
-            Vector3 f = Vector3.Cross(Vector3.right.normalized, u1.normalized).normalized;
-            Vector3 r = Vector3.Cross(u1.normalized, f.normalized).normalized;        
             
-            Matrix4x4 m = new Matrix4x4();
-            m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
-            m.SetColumn(1, new Vector4(u1.x, u1.y, u1.z, 0));                
-            m.SetColumn(2, new Vector4(f.x, f.y, f.z, 0));                
-            m.SetColumn(3, new Vector4(0, 0, 0, 1));
-
-            if (discRenderer != null)
+            using (new IMDraw.PrimitiveScope())
             {
-                discRenderer.material.SetMatrix("_InverseTransformMatrix", Matrix4x4.Inverse(m));
+                IMDraw.Primitive.DiscSDF(transform.position, u, radius, minorRadius);
             }
             break;
         }                        
@@ -189,15 +180,48 @@ public class IMDrawDemo : MonoBehaviour
 
             Vector3 un = u1;
             Vector3 fn = Vector3.Cross(Vector3.right.normalized, un.normalized).normalized;
-            Vector3 rn = Vector3.Cross(un.normalized, fn.normalized).normalized;
+            Vector3 rn = Vector3.Cross(un.normalized, fn.normalized).normalized;                       
+                    
+            Vector3 start = transform.position;
+            float offset = (radius + minorRadius) * 1.0f;
 
-            UnityEngine.Vector3 start = transform.position;
-            Gizmos.color = Color.green;                            
-            Gizmos.DrawLine(start, start + un);
-            Gizmos.color = Color.blue;                            
-            Gizmos.DrawLine(start, start + fn);                            
-            Gizmos.color = Color.red;                            
-            Gizmos.DrawLine(start, start + rn);                            
+            Vector3 A = start + Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 B = start + Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;
+            Vector3 C = start + Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 D = start + Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            
+            Vector3 E = start - Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 F = start - Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            Vector3 G = start - Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 H = start - Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;
+
+            Gizmos.DrawSphere(A, 0.05f);
+            Gizmos.DrawSphere(B, 0.05f);
+            Gizmos.DrawSphere(C, 0.05f);
+            Gizmos.DrawSphere(D, 0.05f);
+
+            Gizmos.DrawSphere(E, 0.05f);
+            Gizmos.DrawSphere(F, 0.05f);
+            Gizmos.DrawSphere(G, 0.05f);
+            Gizmos.DrawSphere(H, 0.05f);
+
+            Handles.Label(A + UnityEngine.Vector3.up * 0.15f, "A");
+            Handles.Label(B + UnityEngine.Vector3.up * 0.15f, "B");
+            Handles.Label(C + UnityEngine.Vector3.up * 0.15f, "C");
+            Handles.Label(D + UnityEngine.Vector3.up * 0.15f, "D");
+            
+            Handles.Label(E + UnityEngine.Vector3.up * 0.15f, "E");
+            Handles.Label(F + UnityEngine.Vector3.up * 0.15f, "F");
+            Handles.Label(G + UnityEngine.Vector3.up * 0.15f, "G");
+            Handles.Label(H + UnityEngine.Vector3.up * 0.15f, "H");
+                                                    
+            Gizmos.DrawLine(start, start + un.normalized * (radius + minorRadius));                                        
+            Gizmos.DrawLine(start, start + fn.normalized * (radius + minorRadius));                                        
+            Gizmos.DrawLine(start, start + rn.normalized * (radius + minorRadius));                                                                            
+
+            Handles.DrawWireDisc(start, un.normalized, radius);                                                                    
+            Handles.DrawWireDisc(start, un.normalized, radius + minorRadius);                                                                    
+            // Gizmos.DrawLine(start, start + Lh);                            
         }        
                               
     }

@@ -107,8 +107,8 @@ namespace IMDraw
             float offset = 1.0f;
             float radius = primitiveData.Radius;
             DefaultLineSDFMaterial.SetPass(0);
-            DefaultLineSDFMaterial.SetVector("_LineStart", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
-            DefaultLineSDFMaterial.SetVector("_LineEnd", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
+            DefaultLineSDFMaterial.SetVector("_Start", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
+            DefaultLineSDFMaterial.SetVector("_End", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
             DefaultLineSDFMaterial.SetFloat("_Radius", radius);
 
             // TODO: Generate 3D AABB of a line

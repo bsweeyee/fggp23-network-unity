@@ -137,7 +137,9 @@ namespace FGNetworkProgramming
                 }
                 response.Approved = true;
                 response.CreatePlayerObject = true;
-            };             
+            }; 
+
+            IMDraw.PrimitiveScope.Initialize();            
             // Input.Instance.OnHandleMouseInput.AddListener((Vector2 mousePos, EGameInput input, EInputState state) => {
             //     switch(input)
             //     {

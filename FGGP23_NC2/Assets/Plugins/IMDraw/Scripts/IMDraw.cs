@@ -3,20 +3,23 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace IMDraw
 {
     public enum EPrimitive
     {
+        NONE,
         LINE_SDF,
         LINE,
         LINE2D,
         DISC,
-        DISC_SDF
+        DISC_SDF,
+        SPHERE_SDF
     }
 
     // TODO: at some point, look into how to separate different data struct for different types of primitive draw
-    public struct TPrimitive
+    public class TPrimitive
     {
         public EPrimitive PrimitiveID;
         public Vector3 Start;
@@ -26,51 +29,113 @@ namespace IMDraw
         public float MinorRadius;
         public Color Color;
 
-        public TPrimitive(EPrimitive id, Vector3 start, Vector3 end, Color color)
+        private static IObjectPool<TPrimitive> pool = new ObjectPool<TPrimitive>(OnCreatePooledItem, OnTakeFromPool, OnReturnedPool);
+
+        private TPrimitive()
         {
-            this.PrimitiveID = id;
-            this.Start = start;
-            this.End = end;
-            this.Color = color;
+            this.PrimitiveID = EPrimitive.NONE;
+            this.Start = Vector3.zero;
+            this.End = Vector3.zero;
+            this.Color = Color.black;
             this.Normal = Vector3.zero;
             this.Radius = 0;
             this.MinorRadius = 0;
         }
 
-        public TPrimitive(EPrimitive id, Vector3 start, Vector3 end, Vector3 normal, float radius, Color color)
+        public static void Release(TPrimitive item)
         {
-            this.PrimitiveID = id;
-            this.Start = start;
-            this.End = end;
-            this.Color = color;
-            this.Normal = normal;
-            this.Radius = radius;
-            this.MinorRadius = 0;
+            pool.Release(item);
         }
 
-        public TPrimitive(EPrimitive id, Vector3 start, Vector3 normal, float radius, float minorRadius, Color color)
+        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 end, Color color)
         {
-            this.PrimitiveID = id;
-            this.Start = start;
-            this.End = Vector3.zero;
-            this.Color = color;
-            this.Normal = normal;
-            this.Radius = radius;
-            this.MinorRadius = minorRadius;
+            TPrimitive p = pool.Get();
+            p.PrimitiveID = id;
+            p.Start = start;
+            p.End = end;
+            p.Color = color;
+            p.Normal = Vector3.zero;
+            p.Radius = 0;
+            p.MinorRadius = 0;
+
+            return p;
+        }
+
+        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 end, Vector3 normal, float radius, Color color)
+        {
+            TPrimitive p = pool.Get();
+            p.PrimitiveID = id;
+            p.Start = start;
+            p.End = end;
+            p.Color = color;
+            p.Normal = normal;
+            p.Radius = radius;
+            p.MinorRadius = 0;
+
+            return p;
+        }
+
+        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 normal, float radius, float minorRadius, Color color)
+        {
+            TPrimitive p = pool.Get();
+            p.PrimitiveID = id;
+            p.Start = start;
+            p.End = Vector3.zero;
+            p.Color = color;
+            p.Normal = normal;
+            p.Radius = radius;
+            p.MinorRadius = minorRadius;
+
+            return p;
+        }
+
+        public static TPrimitive New(EPrimitive id, Vector3 start, float radius, Color color)
+        {
+            TPrimitive p = pool.Get();
+            p.PrimitiveID = id;
+            p.Start = start;
+            p.End = Vector3.zero;
+            p.Color = color;
+            p.Normal = Vector3.zero;
+            p.Radius = radius;
+            p.MinorRadius = 0;
+
+            return p;
+        }
+
+        static TPrimitive OnCreatePooledItem()
+        {
+            TPrimitive item = new TPrimitive();
+
+            return item;
+        }
+
+        static void OnReturnedPool(TPrimitive item)
+        {
+        }
+
+        static void OnTakeFromPool(TPrimitive item)
+        {
+
         }            
     }
 
-    public class PrimitiveScope: System.IDisposable
+    public static class PrimitiveScope
     {                
         public static Queue<TPrimitive> DrawCommands = new Queue<TPrimitive>();         
         public static Material DefaultLineSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawCapsuleSDF"));
         public static Material DefaultTorusSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawTorusSDF"));
+        public static Material DefaultSphereSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawSphereSDF"));
         public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("IMDraw/IMDrawDefault"));
 
-        public PrimitiveScope()
-        {            
+        public static void Initialize()
+        {
+            Camera.onPostRender -= OnPostRenderCallback;
             Camera.onPostRender += OnPostRenderCallback; //NOTE: onPostRender will add delegate to SceneCamera if the tab is also opened
-
+        }
+        
+        public static void BeginScope()
+        {                                    
             // SDF Capsule material setting
             DefaultLineSDFMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
@@ -91,6 +156,16 @@ namespace IMDraw
             // Turn off depth writes
             DefaultTorusSDFMaterial.SetInt("_ZWrite", 0);
 
+             // SDF Capsule material setting
+            DefaultSphereSDFMaterial.hideFlags = HideFlags.HideAndDontSave;
+            // Turn on alpha blending
+            DefaultSphereSDFMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            DefaultSphereSDFMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            // Turn backface culling off
+            DefaultSphereSDFMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            // Turn off depth writes
+            DefaultSphereSDFMaterial.SetInt("_ZWrite", 0);
+
             // Default material setting
             DefaultPrimitiveMaterial.hideFlags = HideFlags.HideAndDontSave;
             // Turn on alpha blending
@@ -102,20 +177,16 @@ namespace IMDraw
             DefaultPrimitiveMaterial.SetInt("_ZWrite", 0);            
         }
 
-        public void Dispose()
+        public static void EndScope()
         {
             
-        }
+        }        
 
-        void DrawSDFLine(TPrimitive primitiveData)
+        static void DrawSDFLine(TPrimitive primitiveData)
         {
             float offset = 1.0f;
             float radius = primitiveData.Radius;
-            DefaultLineSDFMaterial.SetPass(0);
-            DefaultLineSDFMaterial.SetVector("_Start", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
-            DefaultLineSDFMaterial.SetVector("_End", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
-            DefaultLineSDFMaterial.SetFloat("_Radius", radius);
-
+           
             // TODO: Generate 3D AABB of a line
             Vector3 start = primitiveData.Start;
             Vector3 end = primitiveData.End;
@@ -192,8 +263,14 @@ namespace IMDraw
             G = G + fIV * Vector3.forward * radius - Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
             H = H + fIV * Vector3.forward * radius + Mathf.Clamp(rIV, 0, 1) * Vector3.right * radius - uIV * Vector3.up * radius;
 
+            DefaultLineSDFMaterial.SetVector("_Start", new Vector4(primitiveData.Start.x,primitiveData.Start.y,primitiveData.Start.z,0));
+            DefaultLineSDFMaterial.SetVector("_End", new Vector4(primitiveData.End.x,primitiveData.End.y,primitiveData.End.z,0));
+            DefaultLineSDFMaterial.SetFloat("_Radius", radius);              
+            
             GL.PushMatrix();
-            GL.MultMatrix(Matrix4x4.identity);                   
+            GL.MultMatrix(Matrix4x4.identity); 
+
+            DefaultLineSDFMaterial.SetPass(0);
             
             // draw the bounding mesh
             GL.Begin(GL.TRIANGLES);                         
@@ -261,11 +338,12 @@ namespace IMDraw
             GL.PopMatrix();
         }
 
-        void DrawLine(TPrimitive primitiveData)
+        static void DrawLine(TPrimitive primitiveData)
         {
-            DefaultPrimitiveMaterial.SetPass(0);
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);
+
+            DefaultPrimitiveMaterial.SetPass(0);
 
             GL.Begin(GL.LINES);
             GL.Color(primitiveData.Color);
@@ -277,12 +355,13 @@ namespace IMDraw
             GL.PopMatrix();
         }
 
-        void DrawLine2D(TPrimitive primitiveData)
+        static void DrawLine2D(TPrimitive primitiveData)
         {
-            DefaultPrimitiveMaterial.SetPass(0);
             
             GL.PushMatrix();
             GL.LoadOrtho();
+
+            DefaultPrimitiveMaterial.SetPass(0);
 
             GL.Begin(GL.LINES);
             GL.Color(primitiveData.Color);
@@ -293,9 +372,8 @@ namespace IMDraw
             GL.PopMatrix(); 
         }
 
-        void DrawDisc(TPrimitive primitiveData)
+        static void DrawDisc(TPrimitive primitiveData)
         {
-            DefaultPrimitiveMaterial.SetPass(0);
             int iterations = 100;
             
             Matrix4x4 m = new Matrix4x4();
@@ -311,6 +389,9 @@ namespace IMDraw
 
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);
+
+            DefaultPrimitiveMaterial.SetPass(0);
+            
             GL.Begin(GL.LINE_STRIP);
             
             for(int i=1; i<iterations+1; ++i)
@@ -332,10 +413,8 @@ namespace IMDraw
             GL.PopMatrix();
         }        
 
-        void DrawSDFDisc(TPrimitive primitiveData)
+        static void DrawSDFDisc(TPrimitive primitiveData)
         {
-            DefaultTorusSDFMaterial.SetPass(0);
-
             Matrix4x4 m = new Matrix4x4();
             Matrix4x4 mt = new Matrix4x4();
 
@@ -380,7 +459,9 @@ namespace IMDraw
             DefaultTorusSDFMaterial.SetMatrix("_TranslationMatrix", mt);
 
             GL.PushMatrix();
-            GL.MultMatrix(Matrix4x4.identity);                   
+            GL.MultMatrix(Matrix4x4.identity);  
+
+            DefaultTorusSDFMaterial.SetPass(0);                 
             
             // draw the bounding mesh
             GL.Begin(GL.TRIANGLES);                         
@@ -448,7 +529,105 @@ namespace IMDraw
             GL.PopMatrix();
         }
 
-        void OnPostRenderCallback(Camera camera)
+        static void DrawSDFSphere(TPrimitive primitiveData)
+        {
+            Vector3 start = primitiveData.Start;
+            float radius = primitiveData.Radius;
+
+            float offset = radius * 1.0f;
+
+            Vector3 A = start + Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 B = start + Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;
+            Vector3 C = start + Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 D = start + Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            
+            Vector3 E = start - Vector3.right * offset - Vector3.up * offset - Vector3.forward * offset;
+            Vector3 F = start - Vector3.right * offset - Vector3.up * offset + Vector3.forward * offset;
+            Vector3 G = start - Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
+            Vector3 H = start - Vector3.right * offset + Vector3.up * offset - Vector3.forward * offset;                    
+
+            // Matrix4x4 mt = new Matrix4x4();
+            // mt.SetColumn(0, new Vector4(1, 0, 0, 0));
+            // mt.SetColumn(1, new Vector4(0, 1, 0, 0));
+            // mt.SetColumn(2, new Vector4(0, 0, 1, 0));
+            // mt.SetColumn(3, new Vector4(-start.x, -start.y, -start.z, 1));
+
+            DefaultSphereSDFMaterial.SetFloat("_Radius", radius); 
+            DefaultSphereSDFMaterial.SetVector("_Origin", start); 
+            // DefaultSphereSDFMaterial.SetMatrix("_TranslationMatrix", mt); 
+
+            GL.PushMatrix();
+            GL.MultMatrix(Matrix4x4.identity);  
+
+            DefaultSphereSDFMaterial.SetPass(0);                 
+            
+            // draw the bounding mesh
+            GL.Begin(GL.TRIANGLES);                         
+            GL.Color(primitiveData.Color);                                    
+
+            // Front face
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(D.x, D.y, D.z);           
+            GL.Vertex3(C.x, C.y, C.z);
+
+            // Left face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(H.x, H.y, H.z);
+                       
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(H.x, H.y, H.z);
+
+            // Right face
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(H.x, H.y, H.z);           
+            
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(F.x, F.y, F.z);           
+            GL.Vertex3(G.x, G.y, G.z);
+
+            // Back face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(F.x, F.y, F.z);
+
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(G.x, G.y, G.z);           
+            
+            // Top Face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(F.x, F.y, F.z);
+            GL.Vertex3(E.x, E.y, E.z);           
+
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(E.x, E.y, E.z);
+
+            // Bottom Face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(H.x, H.y, H.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+                       
+            // GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);            
+            // GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);            
+
+            GL.End();
+
+            GL.PopMatrix();
+        }
+
+        static void OnPostRenderCallback(Camera camera)
         {
             while (DrawCommands.Count > 0)
             {
@@ -470,11 +649,14 @@ namespace IMDraw
                     case EPrimitive.DISC_SDF:
                     DrawSDFDisc(drawCommand);
                     break;
+                    case EPrimitive.SPHERE_SDF:
+                    DrawSDFSphere(drawCommand);
+                    break;
                 }
+                TPrimitive.Release(drawCommand);
             }
             DrawCommands.Clear();
-            Camera.onPostRender -= OnPostRenderCallback;            
-        }
+        }        
     }
 
     public class Primitive
@@ -482,61 +664,73 @@ namespace IMDraw
         public static void LineSDF(Vector3 start, Vector3 end, float width, string colorString = "#000000")
         {
             Color color;
-            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);                                    
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
         }
 
         public static void LineSDF(Vector3 start, Vector3 end, float width, Color color)
         {
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE_SDF, start, end, Vector3.zero, width, color));
         }
 
         public static void Line(Vector3 start, Vector3 end, string colorString = "#000000")
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE, start, end, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE, start, end, color));
         }
 
         public static void Line(Vector3 start, Vector3 end, Color color)
         {
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE, start, end, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE, start, end, color));
         }
 
         public static void Line2D(Vector3 screenSpaceStart, Vector3 screenSpaceEnd, string colorString = "#000000")
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE2D, screenSpaceStart, screenSpaceEnd, color));                             
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE2D, screenSpaceStart, screenSpaceEnd, color));                             
         }
         
         public static void Line2D(Vector3 screenSpaceStart, Vector3 screenSpaceEnd, Color color)
         {            
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.LINE2D, screenSpaceStart, screenSpaceEnd, color));                             
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.LINE2D, screenSpaceStart, screenSpaceEnd, color));                             
         }
 
         public static void Disc(Vector3 center, Vector3 normal, float radius, string colorString = "#000000")
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, 0, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.DISC, center, normal, radius, 0, color));
         }
 
         public static void Disc(Vector3 center, Vector3 normal, float radius, Color color)
         {            
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC, center, normal, radius, 0, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.DISC, center, normal, radius, 0, color));
         }
 
         public static void DiscSDF(Vector3 center, Vector3 normal, float radius, float minorRadius, string colorString = "#000000")
         {
             Color color;
             UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
         }
 
         public static void DiscSDF(Vector3 center, Vector3 normal, float radius, float minorRadius, Color color)
         {            
-            PrimitiveScope.DrawCommands.Enqueue(new TPrimitive(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.DISC_SDF, center, normal, radius, minorRadius, color));
+        }
+
+        public static void SphereSDF(Vector3 center, float radius, string colorString = "#000000")
+        {
+            Color color;
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.SPHERE_SDF, center, radius, color));
+        }
+
+        public static void SphereSDF(Vector3 center, float radius, Color color)
+        {
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.SPHERE_SDF, center, radius, color));
         }
     }
 }

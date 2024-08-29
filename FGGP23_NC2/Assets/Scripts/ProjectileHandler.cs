@@ -125,10 +125,9 @@ public class ProjectileHandler : MonoBehaviour
             var newPos = tempPos + intermediateVelocity;
             if (a%3 == 0)
             {
-                using (new IMDraw.PrimitiveScope())
-                {
-                    IMDraw.Primitive.LineSDF(lastPos, newPos, 0.05f);
-                }
+                IMDraw.PrimitiveScope.BeginScope();
+                IMDraw.Primitive.LineSDF(lastPos, newPos, 0.05f);
+                IMDraw.PrimitiveScope.EndScope();
                 lastPos = tempPos;
             }
 
@@ -145,10 +144,9 @@ public class ProjectileHandler : MonoBehaviour
             a++;
         }
 
-        using(new IMDraw.PrimitiveScope())
-        {
-            IMDraw.Primitive.DiscSDF(lastPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius, 0.05f);
-        }
+        IMDraw.PrimitiveScope.BeginScope();
+        IMDraw.Primitive.DiscSDF(lastPos, Vector3.up, LocalGame.Instance.GameData.ProjectileRadius, 0.05f);
+        IMDraw.PrimitiveScope.EndScope();
 
         // projectileTarget.transform.position = targetPos;        
         // for(int i=index; i<projectileCurve.Count; i++)

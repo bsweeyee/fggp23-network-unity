@@ -26,6 +26,10 @@ public class IMDrawDemo : MonoBehaviour
     
     [SerializeField] private MeshRenderer discRenderer;    
 
+    void Start()
+    {
+        IMDraw.PrimitiveScope.Initialize();
+    }
     void Update()
     {
         UnityEngine.Vector3 forward = (isInvertForward) ? -UnityEngine.Vector3.forward : UnityEngine.Vector3.forward;
@@ -35,18 +39,16 @@ public class IMDrawDemo : MonoBehaviour
         switch (DrawType)
         {
             case EDrawType.LINE:
-            using (new IMDraw.PrimitiveScope())
-            {                
-                IMDraw.Primitive.LineSDF(transform.position, transform.position + u1.normalized * length, radius);
-            }
+            IMDraw.PrimitiveScope.BeginScope();
+            IMDraw.Primitive.LineSDF(transform.position, transform.position + u1.normalized * length, radius);
+            IMDraw.PrimitiveScope.EndScope();
             break;
             case EDrawType.TORUS:
             Vector3 u = u1;
             
-            using (new IMDraw.PrimitiveScope())
-            {
-                IMDraw.Primitive.DiscSDF(transform.position, u, radius, minorRadius);
-            }
+            IMDraw.PrimitiveScope.BeginScope();
+            IMDraw.Primitive.DiscSDF(transform.position, u, radius, minorRadius);
+            IMDraw.PrimitiveScope.EndScope();
             break;
         }                        
         // IMDraw.Primitive.Line(transform.position, transform.position + u1.normalized * length);

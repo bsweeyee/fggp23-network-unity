@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: IMDrawSDFLine
-  m_Shader: {fileID: 4800000, guid: 42695e2e43255634496a063c904deaaf, type: 3}
+  m_Name: IMDrawSDFCone
+  m_Shader: {fileID: 4800000, guid: 4f7ce325c9ffe8e4191c98962e2a692f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -61,7 +61,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Angle: 0.2
+    - _Angle: 0.44
     - _BumpScale: 1
     - _Cull: 0
     - _Cutoff: 0.5
@@ -70,7 +70,7 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _H: 2
+    - _H: 1.17
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1

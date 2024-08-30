@@ -261,10 +261,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075fb6fce0b5d24e95e08ba5f8664dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DrawType: 1
+  DrawType: 2
   isInvertForward: 1
-  n1: 0.214
-  n2: 1
+  n1: 1
+  n2: 0.969
   radius: 0.38
   minorRadius: 0.1
   length: 2.49

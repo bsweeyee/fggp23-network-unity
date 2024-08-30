@@ -1,6 +1,6 @@
 // Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
 
-Shader "IMDraw/IMDrawTorusSDF"
+Shader "IMDraw/IMDrawConeSDF"
 {
     Properties
     {
@@ -11,9 +11,9 @@ Shader "IMDraw/IMDrawTorusSDF"
         _ZTest ("ZTest", Int) = 4.0 // LEqual
         _Cull ("Cull", Int) = 0.0 // Off
         _ZBias ("ZBias", Float) = 0.0
-        
-        _MajorRadius("MajorRadius", Float) = 1.0
-        _MinorRadius("MinorRadius", Float) = 0.5
+
+        _Angle("Angle", Float) = 1.0
+        _H("H", Float) = 1.0
     }
 
     SubShader
@@ -36,7 +36,6 @@ Shader "IMDraw/IMDrawTorusSDF"
             #define STEPS 64
             #define STEP_SIZE 0.01
             #define MIN_DISTANCE 0.01
-            #define PI 3.14159
 
             struct appdata_t {                
                 float4 vertex : POSITION;
@@ -50,25 +49,35 @@ Shader "IMDraw/IMDrawTorusSDF"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
             float4 _Color;
-            float _MajorRadius;
-            float _MinorRadius;
-            float3 _Start; 
-            float4x4 _InverseTransformMatrix; // TODO: Find a way to apply rotation to torus SDF                                   
-            float4x4 _TranslationMatrix;
+            fixed4 _Origin;
             
-            float torusDistance(float3 p, float2 t)
-            {
-                float2 q = float2(length(p.xz) - t.x, p.y);
-                return length(q) - t.y;
-            }        
+            float _Angle;
+            float _H;
+            float4x4 _InverseTransformMatrix; // TODO: Find a way to apply rotation to SDF                                   
+            float4x4 _TranslationMatrix;
 
-            bool raymarch(float3 position, float majorRadius, float minorRadius, float3 direction)
+            float coneDistance( float3 p, float2 c, float h )
+            {
+                // c is the sin/cos of the angle, h is height
+                // Alternatively pass q instead of (c,h),
+                // which is the point at the base in 2D
+                float2 q = h*float2(c.x/c.y,-1.0);
+                    
+                // float2 w = float2( length(p.xz), p.y - (h/2.0) );
+                float2 w = float2( length(p.xz), p.y - (h/2.0) );
+                float2 a = w - q*clamp( dot(w,q)/dot(q,q), 0.0, 1.0 );
+                float2 b = w - q*float2( clamp( w.x/q.x, 0.0, 1.0 ), 1.0 );
+                float k = sign( q.y );
+                float d = min(dot( a, a ),dot(b, b));
+                float s = max( k*(w.x*q.y-w.y*q.x),k*(w.y-q.y)  );
+                return sqrt(d)*sign(s);
+            }
+
+            float raymarch(float3 position, float3 direction)
             {
                 for (int i=0; i<STEPS; i++)
                 {                                        
-                    float2 t = float2(majorRadius, minorRadius); 
-                    // float distance = sdBox(position, float3(1, 1, 1));                                               
-                    float distance = torusDistance(position, t);                    
+                    float distance = coneDistance(position, float2(sin(_Angle), cos(_Angle)), _H);                
                     if (distance < MIN_DISTANCE)
                     {
                         return 1;
@@ -90,19 +99,18 @@ Shader "IMDraw/IMDrawTorusSDF"
             }
             fixed4 frag (v2f i) : SV_Target
             {
-                float3 worldPosition = i.worldPosition;                
-                worldPosition = mul(_InverseTransformMatrix, float4(worldPosition, 1)).xyz;
+                float3 worldPosition = i.worldPosition;
                 worldPosition = mul(_TranslationMatrix, float4(worldPosition, 1)).xyz;
-                
+                worldPosition = mul(_InverseTransformMatrix, float4(worldPosition, 1)).xyz;
+
                 float3 viewDirection = normalize(i.worldPosition - _WorldSpaceCameraPos);                
                 if (unity_OrthoParams.w > 0.01)
                 {
                     viewDirection = mul((float3x3)unity_CameraToWorld, float3(0,0,1));
                 }
+                viewDirection = mul(_InverseTransformMatrix, float4(viewDirection, 1)).xyz;                
                 
-                viewDirection = mul(_InverseTransformMatrix, float4(viewDirection, 1)).xyz;
-                
-                float rm = raymarch(worldPosition, _MajorRadius, _MinorRadius, viewDirection);              
+                float rm = raymarch(worldPosition, viewDirection);              
                 if (rm <= 0) discard;                
                 return rm;
                 // return i.color;

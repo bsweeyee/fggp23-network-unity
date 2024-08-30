@@ -15,6 +15,9 @@ Shader "IMDraw/IMDrawCapsuleSDF"
         _Start("LineStart", Vector) = (0,0,0,1)
         _End("LineEnd", Vector) = (0,0,0,1)
         _Radius("Radius", Float) = 1.0
+
+        _Angle("Angle", Float) = 1.0
+        _H("H", Float) = 1.0
     }
 
     SubShader
@@ -60,14 +63,13 @@ Shader "IMDraw/IMDrawCapsuleSDF"
                 float3 ba = b - a;
                 float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
                 return length(pa - ba*h) - r;               
-            }                    
+            }        
 
             float raymarch(float3 position, float3 start, float3 end, float radius, float3 direction)
             {
                 for (int i=0; i<STEPS; i++)
                 {                                        
                     float distance = capsuleDistance(position, start, end, radius);
-                    
                     if (distance < MIN_DISTANCE)
                     {
                         return 1;
@@ -97,7 +99,7 @@ Shader "IMDraw/IMDrawCapsuleSDF"
                 }                
                 
                 float rm = raymarch(worldPosition, _Start, _End, _Radius, viewDirection);              
-                // if (rm <= 0) discard;                
+                if (rm <= 0) discard;                
                 return rm;
                 // return i.color;
             }

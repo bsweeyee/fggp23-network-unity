@@ -13,7 +13,8 @@ public class IMDrawDemo : MonoBehaviour
     public enum EDrawType
     {
         LINE,
-        TORUS
+        TORUS,
+        CONE
     }
 
     [SerializeField] private EDrawType DrawType = EDrawType.LINE;
@@ -44,11 +45,18 @@ public class IMDrawDemo : MonoBehaviour
             IMDraw.PrimitiveScope.EndScope();
             break;
             case EDrawType.TORUS:
-            Vector3 u = u1;
-            
+            Vector3 u = u1;            
             IMDraw.PrimitiveScope.BeginScope();
             IMDraw.Primitive.DiscSDF(transform.position, u, radius, minorRadius);
             IMDraw.PrimitiveScope.EndScope();
+            break;
+            case EDrawType.CONE:
+            for (int i=0; i<10; i++)
+            {
+                IMDraw.PrimitiveScope.BeginScope();
+                IMDraw.Primitive.ConeSDF(transform.position + new Vector3(i * 2, 0, 0), u1.normalized, 0.2f, 1);
+                IMDraw.PrimitiveScope.EndScope();                
+            }
             break;
         }                        
         // IMDraw.Primitive.Line(transform.position, transform.position + u1.normalized * length);
@@ -180,8 +188,9 @@ public class IMDrawDemo : MonoBehaviour
             UnityEngine.Vector3 u0 = (n1 >= 0.5f) ? UnityEngine.Vector3.Lerp(UnityEngine.Vector3.right, forward, Mathf.InverseLerp(1, 0.5f, n1)) : UnityEngine.Vector3.Lerp(-UnityEngine.Vector3.right, forward, Mathf.InverseLerp(0, 0.5f, n1));
             UnityEngine.Vector3 u1 = (n2 >= 0.5f) ? UnityEngine.Vector3.Lerp(UnityEngine.Vector3.up, u0.normalized, Mathf.InverseLerp(1, 0.5f, n2)).normalized : UnityEngine.Vector3.Lerp(-UnityEngine.Vector3.up, u0.normalized, Mathf.InverseLerp(0, 0.5f, n2)).normalized;
 
-            Vector3 un = u1;
+            Vector3 un = u1;            
             Vector3 fn = Vector3.Cross(Vector3.right.normalized, un.normalized).normalized;
+            fn =  (Mathf.Abs(Vector3.Dot(un.normalized, Vector3.right.normalized)) < 0.99f) ? fn : Vector3.forward;
             Vector3 rn = Vector3.Cross(un.normalized, fn.normalized).normalized;                       
                     
             Vector3 start = transform.position;

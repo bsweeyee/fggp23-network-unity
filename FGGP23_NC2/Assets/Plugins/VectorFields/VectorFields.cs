@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class VectorFields : MonoBehaviour
 {
@@ -10,6 +13,7 @@ public class VectorFields : MonoBehaviour
     [SerializeField] private Vector2Int size = new Vector2Int(20, 20);
     [SerializeField] private float gridInterval = 1.0f;
     [SerializeField] private float speed = 1.0f;
+    [SerializeField][Range(0, 1)] private float fieldDisplay = 0;
 
     private List<Vector3> particlePositions = new List<Vector3>();
 
@@ -34,25 +38,35 @@ public class VectorFields : MonoBehaviour
     }
     
     void Update()
-    {
+    {        
         for (int i = 0; i<particlePositions.Count; i++)
-        {
+        {            
+            Vector3 initialPoint = new Vector3(min.x + i/size.x *gridInterval, 0, min.y + (i%size.y*gridInterval));
+            Vector3 initialD = Get2DVectorDirection(initialPoint);
+            
             IMDraw.PrimitiveScope.BeginScope();
             IMDraw.Primitive.SphereSDF(particlePositions[i], 0.4f);
+            int j = i%Mathf.FloorToInt(Mathf.Lerp(1, size.magnitude, fieldDisplay));
+            if (j ==0)
+            {
+                IMDraw.Primitive.LineSDF(initialPoint, initialPoint + initialD, 0.1f);
+                IMDraw.Primitive.ConeSDF(initialPoint + initialD, initialD.normalized, 0.3f, 0.75f);
+            }
             IMDraw.PrimitiveScope.EndScope();
 
-            Vector3 nextPos = particlePositions[i] + Get2DVectorDirection(particlePositions[i]) * Time.deltaTime * speed;
+            Vector3 d = Get2DVectorDirection(particlePositions[i]);            
+            Vector3 nextPos = particlePositions[i] + d * Time.deltaTime * speed;
             nextPos.x = Mathf.Clamp(nextPos.x, min.x, max.x);
             nextPos.z = Mathf.Clamp(nextPos.z, min.y, max.y);
             particlePositions[i] = nextPos;
-            // if ((nextPos - particlePositions[i]).magnitude < 0.01f)
-            // {
-            //     particlePositions[i] = new Vector3(min.x + i/size.x *gridInterval, 0, min.y + (i/size.y + i%size.y)*gridInterval);
-            // }
-            // else
-            // {
-            //     particlePositions[i] = nextPos;
-            // }
+            if (d.magnitude < 0.1f)
+            {
+                particlePositions[i] = new Vector3(min.x + i/size.x *gridInterval, 0, min.y + (i%size.y*gridInterval));
+            }
+            else
+            {
+                particlePositions[i] = nextPos;
+            }
         }       
     }
 

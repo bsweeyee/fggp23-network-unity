@@ -15,7 +15,8 @@ namespace IMDraw
         LINE2D,
         DISC,
         DISC_SDF,
-        SPHERE_SDF
+        SPHERE_SDF,
+        CONE_SDF
     }
 
     // TODO: at some point, look into how to separate different data struct for different types of primitive draw
@@ -25,8 +26,8 @@ namespace IMDraw
         public Vector3 Start;
         public Vector3 End;
         public Vector3 Normal;
-        public float Radius;
-        public float MinorRadius;
+        public float R1;
+        public float R2;
         public Color Color;
 
         private static IObjectPool<TPrimitive> pool = new ObjectPool<TPrimitive>(OnCreatePooledItem, OnTakeFromPool, OnReturnedPool);
@@ -38,8 +39,8 @@ namespace IMDraw
             this.End = Vector3.zero;
             this.Color = Color.black;
             this.Normal = Vector3.zero;
-            this.Radius = 0;
-            this.MinorRadius = 0;
+            this.R1 = 0;
+            this.R2 = 0;
         }
 
         public static void Release(TPrimitive item)
@@ -55,13 +56,13 @@ namespace IMDraw
             p.End = end;
             p.Color = color;
             p.Normal = Vector3.zero;
-            p.Radius = 0;
-            p.MinorRadius = 0;
+            p.R1 = 0;
+            p.R2 = 0;
 
             return p;
         }
 
-        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 end, Vector3 normal, float radius, Color color)
+        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 end, Vector3 normal, float r1, Color color)
         {
             TPrimitive p = pool.Get();
             p.PrimitiveID = id;
@@ -69,13 +70,13 @@ namespace IMDraw
             p.End = end;
             p.Color = color;
             p.Normal = normal;
-            p.Radius = radius;
-            p.MinorRadius = 0;
+            p.R1 = r1;
+            p.R2 = 0;
 
             return p;
         }
 
-        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 normal, float radius, float minorRadius, Color color)
+        public static TPrimitive New(EPrimitive id, Vector3 start, Vector3 normal, float r1, float r2, Color color)
         {
             TPrimitive p = pool.Get();
             p.PrimitiveID = id;
@@ -83,13 +84,13 @@ namespace IMDraw
             p.End = Vector3.zero;
             p.Color = color;
             p.Normal = normal;
-            p.Radius = radius;
-            p.MinorRadius = minorRadius;
+            p.R1 = r1;
+            p.R2 = r2;
 
             return p;
         }
 
-        public static TPrimitive New(EPrimitive id, Vector3 start, float radius, Color color)
+        public static TPrimitive New(EPrimitive id, Vector3 start, float r1, Color color)
         {
             TPrimitive p = pool.Get();
             p.PrimitiveID = id;
@@ -97,8 +98,8 @@ namespace IMDraw
             p.End = Vector3.zero;
             p.Color = color;
             p.Normal = Vector3.zero;
-            p.Radius = radius;
-            p.MinorRadius = 0;
+            p.R1 = r1;
+            p.R2 = 0;
 
             return p;
         }
@@ -126,6 +127,7 @@ namespace IMDraw
         public static Material DefaultLineSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawCapsuleSDF"));
         public static Material DefaultTorusSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawTorusSDF"));
         public static Material DefaultSphereSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawSphereSDF"));
+        public static Material DefaultConeSDFMaterial = new Material(Shader.Find("IMDraw/IMDrawConeSDF"));
         public static Material DefaultPrimitiveMaterial = new Material(Shader.Find("IMDraw/IMDrawDefault"));
 
         public static void Initialize()
@@ -185,7 +187,7 @@ namespace IMDraw
         static void DrawSDFLine(TPrimitive primitiveData)
         {
             float offset = 1.0f;
-            float radius = primitiveData.Radius;
+            float radius = primitiveData.R1;
            
             // TODO: Generate 3D AABB of a line
             Vector3 start = primitiveData.Start;
@@ -401,8 +403,8 @@ namespace IMDraw
                 float angle0 = a0 * Mathf.PI * 2;
                 float angle1 = a1 * Mathf.PI * 2;
 
-                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * primitiveData.Radius, Mathf.Sin(angle0) * primitiveData.Radius, 0);
-                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * primitiveData.Radius, Mathf.Sin(angle1) * primitiveData.Radius, 0);                                                
+                Vector3 p0 = m * new Vector3(Mathf.Cos(angle0) * primitiveData.R1, Mathf.Sin(angle0) * primitiveData.R1, 0);
+                Vector3 p1 = m * new Vector3(Mathf.Cos(angle1) * primitiveData.R1, Mathf.Sin(angle1) * primitiveData.R1, 0);                                                
                 
                 GL.Color(primitiveData.Color);            
                 GL.Vertex3(primitiveData.Start.x + p0.x, primitiveData.Start.y + p0.y, primitiveData.Start.z + p0.z);            
@@ -420,6 +422,7 @@ namespace IMDraw
 
             Vector3 u = primitiveData.Normal.normalized;
             Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+            f =  (Mathf.Abs(Vector3.Dot(u.normalized, Vector3.right.normalized)) < 0.99f) ? f : Vector3.forward;
             Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
             
             m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
@@ -433,8 +436,8 @@ namespace IMDraw
             mt.SetColumn(3, new Vector4(-primitiveData.Start.x, -primitiveData.Start.y, -primitiveData.Start.z, 1));
 
             Vector3 start = primitiveData.Start;
-            float radius = primitiveData.Radius;
-            float minorRadius = primitiveData.MinorRadius;
+            float radius = primitiveData.R1;
+            float minorRadius = primitiveData.R2;
             float offset = (radius + minorRadius) * 1.0f;
 
             Vector3 A = start + Vector3.right * offset + Vector3.up * offset + Vector3.forward * offset;
@@ -532,7 +535,7 @@ namespace IMDraw
         static void DrawSDFSphere(TPrimitive primitiveData)
         {
             Vector3 start = primitiveData.Start;
-            float radius = primitiveData.Radius;
+            float radius = primitiveData.R1;
 
             float offset = radius * 1.0f;
 
@@ -551,15 +554,131 @@ namespace IMDraw
             // mt.SetColumn(1, new Vector4(0, 1, 0, 0));
             // mt.SetColumn(2, new Vector4(0, 0, 1, 0));
             // mt.SetColumn(3, new Vector4(-start.x, -start.y, -start.z, 1));
+            // DefaultSphereSDFMaterial.SetMatrix("_TranslationMatrix", mt); 
 
             DefaultSphereSDFMaterial.SetFloat("_Radius", radius); 
             DefaultSphereSDFMaterial.SetVector("_Origin", start); 
-            // DefaultSphereSDFMaterial.SetMatrix("_TranslationMatrix", mt); 
 
             GL.PushMatrix();
             GL.MultMatrix(Matrix4x4.identity);  
 
             DefaultSphereSDFMaterial.SetPass(0);                 
+            
+            // draw the bounding mesh
+            GL.Begin(GL.TRIANGLES);                         
+            GL.Color(primitiveData.Color);                                    
+
+            // Front face
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+
+            GL.Vertex3(A.x, A.y, A.z);
+            GL.Vertex3(D.x, D.y, D.z);           
+            GL.Vertex3(C.x, C.y, C.z);
+
+            // Left face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(H.x, H.y, H.z);
+                       
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(H.x, H.y, H.z);
+
+            // Right face
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(H.x, H.y, H.z);           
+            
+            GL.Vertex3(E.x, E.y, E.z);
+            GL.Vertex3(F.x, F.y, F.z);           
+            GL.Vertex3(G.x, G.y, G.z);
+
+            // Back face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+            GL.Vertex3(F.x, F.y, F.z);
+
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(G.x, G.y, G.z);           
+            
+            // Top Face
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(F.x, F.y, F.z);
+            GL.Vertex3(E.x, E.y, E.z);           
+
+            GL.Vertex3(C.x, C.y, C.z);           
+            GL.Vertex3(D.x, D.y, D.z);
+            GL.Vertex3(E.x, E.y, E.z);
+
+            // Bottom Face
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(H.x, H.y, H.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+
+            GL.Vertex3(A.x, A.y, A.z);           
+            GL.Vertex3(B.x, B.y, B.z);
+            GL.Vertex3(G.x, G.y, G.z);           
+                       
+            // GL.Vertex3(primitiveData.Start.x, primitiveData.Start.y, primitiveData.Start.z);            
+            // GL.Vertex3(primitiveData.End.x, primitiveData.End.y, primitiveData.End.z);            
+
+            GL.End();
+
+            GL.PopMatrix();
+        }
+
+        static void DrawSDFCone(TPrimitive primitiveData)
+        {
+            Vector3 start = primitiveData.Start;
+            Vector3 normal = primitiveData.Normal;
+
+            float a = primitiveData.R1;
+            float h = primitiveData.R2;
+
+            float maxH = h/2;
+
+            float offset = 1.2f;
+
+            Matrix4x4 m = new Matrix4x4();
+            Matrix4x4 mt = new Matrix4x4();
+
+            Vector3 u = normal;
+            Vector3 f = Vector3.Cross(Vector3.right.normalized, u.normalized).normalized;
+            f =  (Mathf.Abs(Vector3.Dot(u.normalized, Vector3.right.normalized)) < 0.99f) ? f : Vector3.forward;
+            Vector3 r = Vector3.Cross(u.normalized, f.normalized).normalized;                            
+            
+            m.SetColumn(0, new Vector4(r.x, r.y, r.z, 0));                
+            m.SetColumn(1, new Vector4(u.x, u.y, u.z, 0));                
+            m.SetColumn(2, new Vector4(f.x, f.y, f.z, 0));                
+            m.SetColumn(3, new Vector4(0, 0, 0, 1));
+
+            mt.SetColumn(0, new Vector4(1, 0, 0, 0));
+            mt.SetColumn(1, new Vector4(0, 1, 0, 0));
+            mt.SetColumn(2, new Vector4(0, 0, 1, 0));
+            mt.SetColumn(3, new Vector4(-start.x, -start.y, -start.z, 1));
+
+            Vector3 A = start + Vector3.right * maxH * offset + Vector3.up * maxH * offset + Vector3.forward * maxH * offset;
+            Vector3 B = start + Vector3.right * maxH * offset + Vector3.up * maxH * offset - Vector3.forward * maxH * offset;
+            Vector3 C = start + Vector3.right * maxH * offset - Vector3.up * maxH * offset - Vector3.forward * maxH * offset;
+            Vector3 D = start + Vector3.right * maxH * offset - Vector3.up * maxH * offset + Vector3.forward * maxH * offset;
+            
+            Vector3 E = start - Vector3.right * maxH * offset - Vector3.up * maxH * offset - Vector3.forward * maxH * offset;
+            Vector3 F = start - Vector3.right * maxH * offset - Vector3.up * maxH * offset + Vector3.forward * maxH * offset;
+            Vector3 G = start - Vector3.right * maxH * offset + Vector3.up * maxH * offset + Vector3.forward * maxH * offset;
+            Vector3 H = start - Vector3.right * maxH * offset + Vector3.up * maxH * offset - Vector3.forward * maxH * offset;                    
+
+            DefaultConeSDFMaterial.SetFloat("_Angle", a); 
+            DefaultConeSDFMaterial.SetFloat("_H", h);
+            DefaultConeSDFMaterial.SetMatrix("_InverseTransformMatrix", Matrix4x4.Inverse(m)); 
+            DefaultConeSDFMaterial.SetMatrix("_TranslationMatrix", mt); 
+
+            GL.PushMatrix();
+            GL.MultMatrix(Matrix4x4.identity);  
+
+            DefaultConeSDFMaterial.SetPass(0);                 
             
             // draw the bounding mesh
             GL.Begin(GL.TRIANGLES);                         
@@ -652,6 +771,9 @@ namespace IMDraw
                     case EPrimitive.SPHERE_SDF:
                     DrawSDFSphere(drawCommand);
                     break;
+                    case EPrimitive.CONE_SDF:
+                    DrawSDFCone(drawCommand);
+                    break;
                 }
                 TPrimitive.Release(drawCommand);
             }
@@ -731,6 +853,20 @@ namespace IMDraw
         public static void SphereSDF(Vector3 center, float radius, Color color)
         {
             PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.SPHERE_SDF, center, radius, color));
+        }
+
+        public static void ConeSDF(Vector3 center, Vector3 normal, float angle, float height, string colorString = "#000000")
+        {
+            if (normal.magnitude < 0.01f) return;
+            Color color;
+            UnityEngine.ColorUtility.TryParseHtmlString(colorString, out color);
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.CONE_SDF, center, normal, angle, height, color));
+        }
+
+        public static void ConeSDF(Vector3 center, Vector3 normal, float angle, float height, Color color)
+        {
+            if (normal.magnitude < 0.01f) return;
+            PrimitiveScope.DrawCommands.Enqueue(TPrimitive.New(EPrimitive.CONE_SDF, center, normal, angle, height, color));
         }
     }
 }
